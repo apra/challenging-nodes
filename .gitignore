@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+torch-generative-inpainting/checkpoints/tf_converted
+
 # C extensions
 *.so
 *.ipynb
