@@ -11,6 +11,7 @@ dependencies:
   - flask=1.1.2
   - requests=2.24.0
   - pillow=8.0.1
+  - pip
   - pip:
     - dill==0.3.4
     - opencv-python==4.5.3.56
