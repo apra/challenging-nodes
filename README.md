@@ -22,7 +22,7 @@ LSVRC2012_val_00000827_input.png --model-path .\torch_generative_inpainting\chec
 ##CRFill Model
 For the CRFILL model, follow the instructions in their README (create the environment according to the environment.yml file) then run the following script:
 ```console
-python test.py --batchSize 1 --nThreads 1 --name objrmv --dataset_mode testimage --image_dir ./datasets/places2sample1k_val/places2samples1k_crop256 --mask_dir ./datasets/places2sample1k_val/places2samples1k_256_mask_square128 --output_dir ./results --model inpaint --netG baseconv --which_epoch latest --load_baseg --nThreads 0
+python test.py --batchSize 1 --name objrmv --dataset_mode testimage --image_dir ./datasets/places2sample1k_val/places2samples1k_crop256 --mask_dir ./datasets/places2sample1k_val/places2samples1k_256_mask_square128 --output_dir ./results --model inpaint --netG baseconv --which_epoch latest --load_baseg --nThreads 0
 ```
 
 Here the important thing is to put `--nThreads 0` as to avoid the data loader to fail.
