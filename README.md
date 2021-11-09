@@ -1,6 +1,6 @@
 # challenging-nodes
 
-==Generative Inpainting Model==
+##Generative Inpainting Model
 Example on a test-image that is provided can be called as:
 ```
 python .\torch_generative_inpainting\test_single.py 
@@ -19,7 +19,7 @@ For the tensorflow model:
 LSVRC2012_val_00000827_input.png --model-path .\torch_generative_inpainting\checkpoints\tf_converted\torch_model.p --mask .\torch_generative_inpainting\examples\center_mask_256.png
 ```
 
-==CRFill Model==
+##CRFill Model
 For the CRFILL model, follow the instructions in their README (create the environment according to the environment.yml file) then run the following script:
 ```console
 user@domain:~$ python test.py --batchSize 1 --nThreads 1 --name objrmv --dataset_mode testimage --image_dir ./datasets/places2sample1k_val/places2samples1k_crop256 --mask_dir ./datasets/places2sample1k_val/places2samples1k_256_mask_square128 --output_dir ./results --model inpaint --netG baseconv --which_epoch latest --load_baseg --nThreads 0
