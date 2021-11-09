@@ -13,7 +13,7 @@ from utils.tools import get_config, random_bbox, mask_image, is_image_file, defa
 
 
 parser = ArgumentParser()
-parser.add_argument('--config', type=str, default='torch_generative_inpainting/configs/config.yaml',
+parser.add_argument('--config', type=str, default='configs/config.yaml',
                     help="training configuration")
 parser.add_argument('--seed', type=int, help='manual seed')
 parser.add_argument('--image', type=str)
