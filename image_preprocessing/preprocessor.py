@@ -1,9 +1,9 @@
 import opencxr
 from opencxr.utils.file_io import read_file, write_file
-from io_utils import read_paths_for_extension
+from image_preprocessing.io_utils import read_paths_for_extension
 
 
-def preprocess_single(input_dir, input_name, output_dir):
+def preprocess_single(input_dir, input_name, output_dir=''):
     preprocess_algo = opencxr.load(opencxr.algorithms.cxr_standardize)
     # read a file (supports dcm, mha, mhd, png)
 
@@ -11,9 +11,11 @@ def preprocess_single(input_dir, input_name, output_dir):
     img_np, spacing, _ = read_file(full_cxr_file_path)
     # Do standardization of intensities, cropping to lung bounding box, and resizing to 1024
     std_img, new_spacing, size_changes = preprocess_algo.run(img_np, spacing)
-    # write the standardized file to disk
-    output_cxr_loc = output_dir + '/' + input_name
-    write_file(output_cxr_loc, std_img, new_spacing)
+    if output_dir:
+        # write the standardized file to disk
+        output_cxr_loc = output_dir + '/' + input_name
+        write_file(output_cxr_loc, std_img, new_spacing)
+    return std_img
 
 
 def preprocess_folder(base_dir, output_dir, extension='.mha'):
