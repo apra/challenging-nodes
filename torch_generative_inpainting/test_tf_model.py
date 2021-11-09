@@ -8,7 +8,7 @@ from trainer import Trainer
 from utils.tools import get_config
 
 parser = ArgumentParser()
-parser.add_argument('--config', type=str, default='torch-generative-inpainting/configs/config.yaml',
+parser.add_argument('--config', type=str, default='torch_generative_inpainting/configs/config.yaml',
                     help="training configuration")
 parser.add_argument('--image', default='', type=str,
                     help='The filename of image to be completed.')

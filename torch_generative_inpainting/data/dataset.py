@@ -1,7 +1,7 @@
 import sys
 import torch.utils.data as data
 from os import listdir
-from torch_generative_inpainting.utils.tools import default_loader, is_image_file, normalize
+from utils.tools import default_loader, is_image_file, normalize
 import os
 
 import torchvision.transforms as transforms

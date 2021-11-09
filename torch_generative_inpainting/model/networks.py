@@ -7,7 +7,7 @@ from PIL import Image
 from torchvision import transforms
 from torchvision import utils as vutils
 
-from torch_generative_inpainting.utils.tools import extract_image_patches, flow_to_image, \
+from utils.tools import extract_image_patches, flow_to_image, \
     reduce_mean, reduce_sum, default_loader, same_padding
 
 
