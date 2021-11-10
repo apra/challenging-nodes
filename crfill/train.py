@@ -9,6 +9,8 @@ from util.iter_counter import IterationCounter
 from logger import Logger
 from torchvision.utils import make_grid
 from trainers import create_trainer
+from torch.utils.tensorboard import SummaryWriter
+from torchvision import datasets, transforms
 
 # parse options
 opt = TrainOptions().parse()
@@ -33,6 +35,8 @@ iter_counter = IterationCounter(opt, len(dataloader_train))
 # create tool for visualization
 writer = Logger(f"output/{opt.name}")
 
+ts_writer = SummaryWriter()
+
 trainer.save('latest')
 
 for epoch in iter_counter.training_epochs():
@@ -50,21 +54,31 @@ for epoch in iter_counter.training_epochs():
 
         if iter_counter.needs_displaying():
             losses = trainer.get_latest_losses()
-            for k,v in losses.items():
-                writer.add_scalar(k,v.mean().item(), iter_counter.total_steps_so_far)
+            for k, v in losses.items():
+                writer.add_scalar(k, v.mean().item(), iter_counter.total_steps_so_far)
+                ts_writer.add_scalar(k, v.mean().item(), iter_counter.total_steps_so_far)
             writer.write_console(epoch, iter_counter.epoch_iter, iter_counter.time_per_iter)
             num_print = min(4, data_i['image'].size(0))
             writer.add_single_image('inputs',
                     (make_grid(trainer.get_latest_inputs()[:num_print])+1)/2,
                     iter_counter.total_steps_so_far)
+            ts_writer.add_image('inputs',
+                            (make_grid(trainer.get_latest_inputs()[:num_print]) + 1) / 2,
+                            iter_counter.total_steps_so_far)
             infer_out,inp = trainer.pix2pix_model.forward(data_i, mode='inference')
             vis = (make_grid(inp[:num_print])+1)/2
             writer.add_single_image('infer_in',
                     vis,
                     iter_counter.total_steps_so_far)
+            ts_writer.add_image('infer_in',
+                                    vis,
+                                    iter_counter.total_steps_so_far)
             vis = (make_grid(infer_out[:num_print])+1)/2
             vis = torch.clamp(vis, 0,1)
             writer.add_single_image('infer_out',
+                    vis,
+                    iter_counter.total_steps_so_far)
+            ts_writer.add_image('infer_out',
                     vis,
                     iter_counter.total_steps_so_far)
             generated = trainer.get_latest_generated()
