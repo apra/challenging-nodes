@@ -48,7 +48,7 @@ These script will run the inpainting model on the samples I provided. Modify the
 
 2. run the training script:
 ```
-./train.sh
+python train.py --dataset_mode_train trainimage --name debug --dataset_mode_val valimage --train_image_dir ./datasets/places/places2 --train_image_list ./datasets/places/train_example.txt --path_objectshape_list ./datasets/object_shapes.txt --path_objectshape_base ./datasets/object_masks --val_image_dir ./datasets/places2sample1k_val/places2samples1k_crop256 --val_image_list ./datasets/places2sample1k_val/files.txt --val_mask_dir ./datasets/places2sample1k_val/places2samples1k_256_mask_square128 --no_vgg_loss --no_ganFeat_loss --load_size 640 --crop_size 256 --model inpaint --netG baseconv --netD deepfill --preprocess_mode scale_shortside_and_crop --validation_freq 10000 --gpu_ids 0 --niter 50
 ```
 
 open the html files in ```./output``` to visualize training
