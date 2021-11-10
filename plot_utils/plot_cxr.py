@@ -3,6 +3,7 @@ from opencxr.utils.file_io import read_file
 from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import numpy as np
 from cv2 import cv2
 import csv
 from image_preprocessing.preprocessor import preprocess_single
@@ -61,12 +62,13 @@ def plot_mha_scan(image_path: Path, preprocess_opencxr=False, include_metadata_b
 
 
 def _metadata_extractor(image_name, metadata_location=METADATA_LOCATION):
-    """Reads whole csv to find image_name, so don't use on extremely large csv"""
+    """Reads whole csv to find image_name, so don't use on extremely large csv."""
     bboxes = []
     with open(metadata_location) as f_obj:
         reader = csv.reader(f_obj, delimiter=',')
         for line in reader:  # Iterates through the rows of your csv
             if image_name in str(line):  # If the string you want to search is in the row
-                _, h, _, _, w, x, y = [int(entry) if entry.isnumeric() else entry for entry in line]
+                _, w, _, _, h, y, x = [int(entry) if entry.isnumeric() else entry for entry in line]  # flipped x, y wrt metadata file
+                #  _, h, _, _, w, x, y = [int(entry) if entry.isnumeric() else entry for entry in line]
                 bboxes.append([x, y, w, h])
     return bboxes
