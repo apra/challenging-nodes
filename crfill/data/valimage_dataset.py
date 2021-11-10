@@ -36,7 +36,7 @@ class ValImageDataset(BaseDataset):
                 transforms.Resize((opt.crop_size, opt.crop_size), 
                     interpolation=Image.NEAREST),
                 transforms.ToTensor(), 
-                transforms.Normalize((0.5, 0.5, 0.5),(0.5, 0.5, 0.5))
+                transforms.Normalize((0.5, 0.5), (0.5, 0.5))
                 ]
         self.image_transform = transforms.Compose(transform_list)
         self.mask_transform = transforms.Compose([

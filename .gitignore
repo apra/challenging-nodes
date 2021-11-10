@@ -12,6 +12,7 @@ torch-generative-inpainting/checkpoints/tf_converted
 .Python
 env/
 build/
+datasets/
 develop-eggs/
 dist/
 downloads/
