@@ -1,6 +1,6 @@
 # challenging-nodes
 
-##Generative Inpainting Model
+## Generative Inpainting Model
 Example on a test-image that is provided can be called as:
 ```
 python .\torch_generative_inpainting\test_single.py 
@@ -19,7 +19,7 @@ For the tensorflow model:
 LSVRC2012_val_00000827_input.png --model-path .\torch_generative_inpainting\checkpoints\tf_converted\torch_model.p --mask .\torch_generative_inpainting\examples\center_mask_256.png
 ```
 
-##CRFill Model
+## CRFill Model
 
 [Original repository](https://github.com/zengxianyu/crfill)
 
