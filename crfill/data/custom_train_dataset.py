@@ -1,9 +1,12 @@
+import torchvision.transforms
+
 from data.base_dataset import get_params, get_transform, BaseDataset
 from PIL import Image
 import os
 import pdb
 import csv
 import SimpleITK as sitk
+from torchvision.transforms import Compose, ToTensor
 from data.custom_transformations import mask_image, crop_around_mask_bbox, normalize_cxr, mask_convention_setter
 
 
@@ -84,14 +87,16 @@ class CustomTrainImageDataset(BaseDataset):
 
             cropped_image, new_mask_bbox = crop_around_mask_bbox(full_image, image_mask_bbox, crop_size=crop_size)  # Crop around nodule
             cropped_image = normalize_cxr(cropped_image)  # divide 4095
-            cropped_masked_image = mask_image(cropped_image, new_mask_bbox)
+            cropped_masked_image, mask_array = mask_image(cropped_image, new_mask_bbox)
 
             #params = get_params(self.opt, cropped_image.shape)
             transform_image = get_transform(self.opt, '')
+            mask_tensor = Compose([ToTensor()])(mask_array)
             image_tensor = transform_image(cropped_image)
-            mask_tensor = transform_image(cropped_masked_image)  #TODO is there any randomness in the transform -- then we get different transforms on original and masked...
+            masked_image_tensor = transform_image(cropped_masked_image)  #TODO is there any randomness in the transform -- then we get different transforms on original and masked...
             input_dict = {
                           'image': image_tensor,
+                          'masked_image': masked_image_tensor,
                           'mask': mask_tensor,
                           'path': image_path,
                           }

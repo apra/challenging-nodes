@@ -6,7 +6,9 @@ def mask_image(image: np.ndarray, mask_bbox, mask_value=1):
     [x, y, w, h] = mask_convention_setter(mask_bbox, invert=True)  # makes sure bbox is [x,y,w,h]
     mask_image = image.copy()
     mask_image[y:y+h, x:x+w] = mask_value
-    return mask_image
+    mask_array = np.zeros((image.shape))
+    mask_array[y:y+h, x:x+w] = mask_value
+    return mask_image, mask_array
 
 
 def normalize_cxr(image):
