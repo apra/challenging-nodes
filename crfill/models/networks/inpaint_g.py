@@ -31,6 +31,7 @@ class TwostagendGenerator(BaseNetwork):
         baseg = network(opt, return_pm=True)
         self.baseg = baseg
         rate = 1
+        self.img_channels = 1
         cnum = self.baseg.cnum
         self.cnum = cnum
         # similarity encoder
@@ -38,7 +39,7 @@ class TwostagendGenerator(BaseNetwork):
         self.sconv2 = gen_conv(2*cnum, 4*cnum, 3, 1, activation=nn.ReLU()) # skip cnn out
 
         # feature encoder
-        self.bconv1 = gen_conv(3, cnum, 5, 1) # skip cnn out
+        self.bconv1 = gen_conv(self.img_channel, cnum, 5, 1) # skip cnn out
         self.bconv2_downsample = gen_conv(int(cnum/2), 2*cnum, 3, 2)
         self.bconv3 = gen_conv(cnum, 2*cnum, 3, 1) # skip cnn out
         self.bconv4_downsample = gen_conv(cnum, 4*cnum, 3, 2)
@@ -51,7 +52,7 @@ class TwostagendGenerator(BaseNetwork):
         self.conv16_2 = gen_conv(cnum//2, cnum, 3, 1) # skip cnn in
 
         ##cnum//2
-        self.conv17 = gen_conv(cnum//2, 3, 3, 1, activation=None)
+        self.conv17 = gen_conv(cnum//2, self.img_channels, 3, 1, activation=None)
         self.cam_1 = ReduceContextAttentionP1(nn_hard=False, ufstride=2*rate,
                 stride=2*rate, bkg_patch_size=4*rate, pd=0,
                 norm_type=opt.norm_type, is_th=opt.use_th, th=opt.th)
@@ -109,6 +110,7 @@ class DeepFillGenerator(BaseNetwork):
         cnum = 48
         self.cnum = cnum
         rate = 1
+        self.img_channel = 1
         self.cam_1 = ReduceContextAttentionP1(nn_hard=False,
                 ufstride=2*rate,
                 stride=2*rate,
@@ -130,7 +132,7 @@ class DeepFillGenerator(BaseNetwork):
         #        bkg_patch_size=4*rate,
         #        stride=2*rate, pd=1*rate)
         # stage1
-        self.conv1 = gen_conv(5, cnum, 5, 1)
+        self.conv1 = gen_conv(self.img_channel+2, cnum, 5, 1)
         self.conv2_downsample = gen_conv(int(cnum/2), 2*cnum, 3, 2)
         self.conv3 = gen_conv(cnum, 2*cnum, 3, 1)
         self.conv4_downsample = gen_conv(cnum, 4*cnum, 3, 2)
@@ -175,7 +177,7 @@ class DeepFillGenerator(BaseNetwork):
         self.allconv14 = gen_conv(cnum, 2*cnum, 3, 1)
         self.allconv15_upsample_conv = gen_deconv(cnum, cnum)
         self.allconv16 = gen_conv(cnum//2, cnum//2, 3, 1)
-        self.allconv17 = gen_conv(cnum//4, 3, 3, 1, activation=None)
+        self.allconv17 = gen_conv(cnum//4, self.img_channel, 3, 1, activation=None)
 
     def get_param_list(self, stage="all"):
         if stage=="all":
@@ -221,7 +223,7 @@ class DeepFillGenerator(BaseNetwork):
         x = torch.tanh(x)
         x_stage1 = x
 
-        x = x*mask + xin[:, 0:3, :, :]*(1.-mask)
+        x = x*mask + xin[:, 0:self.img_channel, :, :]*(1.-mask)
         xnow = x
 
         ###
@@ -281,8 +283,10 @@ class BaseConvGenerator(BaseNetwork):
         self.return_pm = return_pm
         cnum = 48
         self.cnum = cnum
+        self.img_channel = 1
+        concat_input_channels = self.img_channel+2
         # stage1
-        self.conv1 = gen_conv(5, cnum, 5, 1)
+        self.conv1 = gen_conv(concat_input_channels, cnum, 5, 1)
         self.conv2_downsample = gen_conv(int(cnum/2), 2*cnum, 3, 2)
         self.conv3 = gen_conv(cnum, 2*cnum, 3, 1)
         self.conv4_downsample = gen_conv(cnum, 4*cnum, 3, 2)
@@ -298,10 +302,10 @@ class BaseConvGenerator(BaseNetwork):
         self.conv14 = gen_conv(cnum, 2*cnum, 3, 1)
         self.conv15_upsample_conv = gen_deconv(cnum, cnum)
         self.conv16 = gen_conv(cnum//2, cnum//2, 3, 1)
-        self.conv17 = gen_conv(cnum//4, 3, 3, 1, activation=None)
+        self.conv17 = gen_conv(cnum//4, self.img_channel, 3, 1, activation=None)
 
         # stage2
-        self.xconv1 = gen_conv(3, cnum, 5, 1)
+        self.xconv1 = gen_conv(self.img_channel, cnum, 5, 1)
         self.xconv2_downsample = gen_conv(cnum//2, cnum, 3, 2)
         self.xconv3 = gen_conv(cnum//2, 2*cnum, 3, 1)
         self.xconv4_downsample = gen_conv(cnum, 2*cnum, 3, 2)
@@ -311,7 +315,7 @@ class BaseConvGenerator(BaseNetwork):
         self.xconv8_atrous = gen_conv(2*cnum, 4*cnum, 3, rate=4)
         self.xconv9_atrous = gen_conv(2*cnum, 4*cnum, 3, rate=8)
         self.xconv10_atrous = gen_conv(2*cnum, 4*cnum, 3, rate=16)
-        self.pmconv1 = gen_conv(3, cnum, 5, 1)
+        self.pmconv1 = gen_conv(self.img_channel, cnum, 5, 1)
         self.pmconv2_downsample = gen_conv(cnum//2, cnum, 3, 2)
         self.pmconv3 = gen_conv(cnum//2, 2*cnum, 3, 1)
         self.pmconv4_downsample = gen_conv(cnum, 4*cnum, 3, 2)
@@ -327,7 +331,7 @@ class BaseConvGenerator(BaseNetwork):
         self.allconv14 = gen_conv(cnum, 2*cnum, 3, 1)
         self.allconv15_upsample_conv = gen_deconv(cnum, cnum)
         self.allconv16 = gen_conv(cnum//2, cnum//2, 3, 1)
-        self.allconv17 = gen_conv(cnum//4, 3, 3, 1, activation=None)
+        self.allconv17 = gen_conv(cnum//4, self.img_channel, 3, 1, activation=None)
 
     def get_param_list(self, stage="all"):
         if stage=="all":
@@ -373,7 +377,7 @@ class BaseConvGenerator(BaseNetwork):
         x = torch.tanh(x)
         x_stage1 = x
 
-        x = x*mask + xin[:, 0:3, :, :]*(1.-mask)
+        x = x*mask + xin[:, 0:self.img_channel, :, :]*(1.-mask)
         xnow = x
 
         ###

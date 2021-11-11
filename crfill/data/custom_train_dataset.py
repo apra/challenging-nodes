@@ -4,6 +4,8 @@ from data.base_dataset import get_params, get_transform, BaseDataset
 from PIL import Image
 import os
 import pdb
+import torch
+import numpy as np
 import csv
 import SimpleITK as sitk
 from torchvision.transforms import Compose, ToTensor
@@ -29,7 +31,7 @@ def metadata_nonempty_dict(metadata_location):
     return bboxes
 
 
-class CustomTrainImageDataset(BaseDataset):
+class CustomTrainDataset(BaseDataset):
     @staticmethod
     def modify_commandline_options(parser, is_train):
         parser.add_argument('--train_image_dir', type=str, required=True,
@@ -86,18 +88,20 @@ class CustomTrainImageDataset(BaseDataset):
             image_mask_bbox = mask_convention_setter(image_mask_bbox)  # use this method to set conventions for mask bbox
 
             cropped_image, new_mask_bbox = crop_around_mask_bbox(full_image, image_mask_bbox, crop_size=crop_size)  # Crop around nodule
-            cropped_image = normalize_cxr(cropped_image)  # divide 4095
+            cropped_image = np.array(normalize_cxr(cropped_image),dtype='float32') # divide 4095
             cropped_masked_image, mask_array = mask_image(cropped_image, new_mask_bbox)
 
             #params = get_params(self.opt, cropped_image.shape)
             transform_image = get_transform(self.opt, '')
-            mask_tensor = Compose([ToTensor()])(mask_array)
+            mask_tensor = torch.Tensor(mask_array)
             image_tensor = transform_image(cropped_image)
             masked_image_tensor = transform_image(cropped_masked_image)  #TODO is there any randomness in the transform -- then we get different transforms on original and masked...
             input_dict = {
-                          'image': image_tensor,
-                          'masked_image': masked_image_tensor,
-                          'mask': mask_tensor,
+                          'bounding_box': image_mask_bbox,
+                          'full_image': normalize_cxr(full_image),
+                          'image': image_tensor.float(),
+                          'masked_image': masked_image_tensor.float(),
+                          'mask': mask_tensor.float(),
                           'path': image_path,
                           }
             return input_dict

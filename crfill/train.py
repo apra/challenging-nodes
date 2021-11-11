@@ -11,7 +11,7 @@ from torchvision.utils import make_grid
 from trainers import create_trainer
 from torch.utils.tensorboard import SummaryWriter
 from torchvision import datasets, transforms
-
+from util.plot_util import draw_bounding_boxes
 # parse options
 opt = TrainOptions().parse()
 
@@ -58,13 +58,13 @@ for epoch in iter_counter.training_epochs():
                 writer.add_scalar(k, v.mean().item(), iter_counter.total_steps_so_far)
                 ts_writer.add_scalar(k, v.mean().item(), iter_counter.total_steps_so_far)
             writer.write_console(epoch, iter_counter.epoch_iter, iter_counter.time_per_iter)
-            num_print = min(4, data_i['image'].size(0))
-            writer.add_single_image('inputs',
-                    (make_grid(trainer.get_latest_inputs()[:num_print])+1)/2,
-                    iter_counter.total_steps_so_far)
-            ts_writer.add_image('inputs',
-                            (make_grid(trainer.get_latest_inputs()[:num_print]) + 1) / 2,
-                            iter_counter.total_steps_so_far)
+            num_print = min(4, data_i['full_image'].size(0))
+            # writer.add_single_image('inputs',
+            #         (make_grid(data_i['full_image'][:num_print])+1)/2,
+            #         iter_counter.total_steps_so_far)
+            # ts_writer.add_image('inputs',
+            #                 draw_bounding_boxes(data_i['full_image'],data_i['bounding_box']),
+            #                 iter_counter.total_steps_so_far)
             infer_out,inp = trainer.pix2pix_model.forward(data_i, mode='inference')
             vis = (make_grid(inp[:num_print])+1)/2
             writer.add_single_image('infer_in',

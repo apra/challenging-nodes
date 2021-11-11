@@ -11,7 +11,8 @@ class DeepFillDiscriminator(BaseNetwork):
     def __init__(self, opt):
         super(DeepFillDiscriminator, self).__init__()
         cnum = 64
-        self.conv1 = nn.utils.spectral_norm(dis_conv(4, cnum))
+        self.img_channels = 1
+        self.conv1 = nn.utils.spectral_norm(dis_conv(self.img_channels+1, cnum))
         self.conv2 = nn.utils.spectral_norm(dis_conv(cnum, cnum*2))
         self.conv3 = nn.utils.spectral_norm(dis_conv(cnum*2, cnum*4))
         self.conv4 = nn.utils.spectral_norm(dis_conv(cnum*4, cnum*4))

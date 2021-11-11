@@ -41,7 +41,7 @@ class InpaintModel(torch.nn.Module):
 
         # set loss functions
         if opt.isTrain:
-            self.mask_creator = MaskCreator(opt.path_objectshape_list, opt.path_objectshape_base)
+            #self.mask_creator = MaskCreator(opt.path_objectshape_list, opt.path_objectshape_base)
             self.criterionGAN = networks.GANLoss(
                 opt.gan_mode, tensor=self.FloatTensor, opt=self.opt)
             self.criterionFeat = torch.nn.L1Loss()
@@ -118,26 +118,27 @@ class InpaintModel(torch.nn.Module):
 
     def preprocess_input(self, data):
         b,c,h,w = data['image'].shape
-        if self.opt.isTrain:
-            # generate random stroke mask
-            mask1 = self.mask_creator.stroke_mask(h, w, max_length=min(h,w)/2)
-            # generate object/square mask
-            ri = random.randint(0,3)
-            if ri  == 1 or ri == 0:
-                mask2 = self.mask_creator.object_mask(h, w)
-            else:
-                mask2 = self.mask_creator.rectangle_mask(h, w, 
-                        min(h,w)//4, min(h,w)//2)
-            # use the mix of two masks
-            mask = (mask1+mask2>0)
-            mask = mask.astype(np.float)
-            mask = self.FloatTensor(mask)[None, None,...].expand(b,-1,-1,-1)
-            data['mask'] = mask
-        else:
-            if self.use_gpu():
-                data['mask'] = data['mask'].cuda()
-            mask = data['mask']
+        # if self.opt.isTrain:
+        #     # generate random stroke mask
+        #     mask1 = self.mask_creator.stroke_mask(h, w, max_length=min(h,w)/2)
+        #     # generate object/square mask
+        #     ri = random.randint(0,3)
+        #     if ri  == 1 or ri == 0:
+        #         mask2 = self.mask_creator.object_mask(h, w)
+        #     else:
+        #         mask2 = self.mask_creator.rectangle_mask(h, w,
+        #                 min(h,w)//4, min(h,w)//2)
+        #     # use the mix of two masks
+        #     mask = (mask1+mask2>0)
+        #     mask = mask.astype(np.float)
+        #     mask = self.FloatTensor(mask)[None, None,...].expand(b,-1,-1,-1)
+        #     data['mask'] = mask
+        # else:
+        #     if self.use_gpu():
+        #         data['mask'] = data['mask'].cuda()
+        #     mask = data['mask']
         # move to GPU and change data types
+        mask = data['mask']
         if self.use_gpu():
             data['image'] = data['image'].cuda()
         inputs = data['image']*(1-mask)
