@@ -58,8 +58,7 @@ def get_transform(opt, params, method=Image.BICUBIC, normalize=True, toTensor=Tr
         transform_list.append(transforms.Lambda(lambda img: __crop(img, params['crop_pos'], opt.crop_size)))
 
     if opt.preprocess_mode == 'none':
-        base = 32
-        transform_list.append(transforms.Lambda(lambda img: __make_power_2(img, base, method)))
+        pass
 
     if opt.preprocess_mode == 'fixed':
         w = opt.crop_size
@@ -73,13 +72,9 @@ def get_transform(opt, params, method=Image.BICUBIC, normalize=True, toTensor=Tr
         transform_list += [transforms.ToTensor()]
 
     if normalize:
-        transform_list += [transforms.Normalize((0.5, 0.5),
-                                                (0.5, 0.5))]
+        transform_list += [transforms.Normalize(0.5,
+                                                0.5)]
     return transforms.Compose(transform_list)
-
-
-def normalize():
-    return transforms.Normalize((0.5, 0.5), (0.5, 0.5))
 
 
 def __resize(img, w, h, method=Image.BICUBIC):
@@ -87,7 +82,7 @@ def __resize(img, w, h, method=Image.BICUBIC):
 
 
 def __make_power_2(img, base, method=Image.BICUBIC):
-    ow, oh = img.size
+    ow, oh = img.shape
     h = int(round(oh / base) * base)
     w = int(round(ow / base) * base)
     if (h == oh) and (w == ow):
