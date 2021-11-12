@@ -1,6 +1,5 @@
 FROM nvidia/cuda:11.1.1-devel-ubuntu18.04
 
-
 ENV CUDA_ROOT /usr/local/cuda/bin
 ENV LD_LIBRARY_PATH /usr/local/nvidia/lib64
 
@@ -31,7 +30,7 @@ ENV TERM "screen-256color"
 # Setup python packages
 RUN conda install python=3.6.12
 RUN conda install pytorch torchvision tensorboard matplotlib tqdm flask=1.1.2 requests=2.24.0 pip pillow=8.0.1
-RUN pip install dill==0.3.4 opencv-python==4.5.3.56
+RUN pip install dill==0.3.4 opencv-python==4.5.3.56 opencxr
 
 ENV PATH "/code/tools:$PATH"
 ENV PYTHONPATH /code
