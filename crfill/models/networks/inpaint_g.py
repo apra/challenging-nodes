@@ -39,7 +39,7 @@ class TwostagendGenerator(BaseNetwork):
         self.sconv2 = gen_conv(2*cnum, 4*cnum, 3, 1, activation=nn.ReLU()) # skip cnn out
 
         # feature encoder
-        self.bconv1 = gen_conv(self.img_channel, cnum, 5, 1) # skip cnn out
+        self.bconv1 = gen_conv(self.img_channels, cnum, 5, 1) # skip cnn out
         self.bconv2_downsample = gen_conv(int(cnum/2), 2*cnum, 3, 2)
         self.bconv3 = gen_conv(cnum, 2*cnum, 3, 1) # skip cnn out
         self.bconv4_downsample = gen_conv(cnum, 4*cnum, 3, 2)
