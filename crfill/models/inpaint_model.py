@@ -15,7 +15,8 @@ class InpaintModel(torch.nn.Module):
         parser.add_argument('--path_objectshape_list', type=str, default='', help='path obj list')
         parser.add_argument('--update_part', type=str, default='all', help='update part')
         parser.add_argument('--d_mask_in', action='store_true', help='if specified, d mask in')
-        parser.add_argument('--no_fine_loss', action='store_true', help='if specified, do *not* use refinementstageloss')
+        parser.add_argument('--no_fine_loss', action='store_true',
+                            help='if specified, do *not* use refinementstageloss')
         parser.add_argument('--load_pretrained_g', type=str, required=False, help='load pt g')
         parser.add_argument('--load_pretrained_d', type=str, required=False, help='load pt d')
         return parser
@@ -33,15 +34,15 @@ class InpaintModel(torch.nn.Module):
         if opt.isTrain and opt.load_pretrained_g is not None:
             print(f"looad {opt.load_pretrained_g}")
             self.netG = util.load_network_path(
-                    self.netG, opt.load_pretrained_g)
+                self.netG, opt.load_pretrained_g)
         if opt.isTrain and opt.load_pretrained_d is not None:
             print(f"looad {opt.load_pretrained_d}")
             self.netD = util.load_network_path(
-                    self.netD, opt.load_pretrained_d)
+                self.netD, opt.load_pretrained_d)
 
         # set loss functions
         if opt.isTrain:
-            #self.mask_creator = MaskCreator(opt.path_objectshape_list, opt.path_objectshape_base)
+            # self.mask_creator = MaskCreator(opt.path_objectshape_list, opt.path_objectshape_base)
             self.criterionGAN = networks.GANLoss(
                 opt.gan_mode, tensor=self.FloatTensor, opt=self.opt)
             self.criterionFeat = torch.nn.L1Loss()
@@ -58,24 +59,23 @@ class InpaintModel(torch.nn.Module):
         if mode == 'generator':
             g_loss, coarse_image, composed_image = self.compute_generator_loss(
                 inputs, real_image, mask)
-            generated = {'coarse':coarse_image, 
-                    'composed':composed_image}
+            generated = {'coarse': coarse_image,
+                         'composed': composed_image}
             return g_loss, inputs, generated
         elif mode == 'discriminator':
-            d_loss = self.compute_discriminator_loss(
-                inputs, real_image, mask)
+            d_loss = self.compute_discriminator_loss(inputs, real_image, mask)
             return d_loss, data['inputs']
         elif mode == 'inference':
             with torch.no_grad():
                 coarse_image, fake_image = self.generate_fake(inputs, real_image, mask)
-                composed_image = fake_image*mask + inputs*(1-mask)
+                composed_image = fake_image * mask + inputs * (1 - mask)
             return composed_image, inputs
         else:
             raise ValueError("|mode| is invalid")
 
     def create_optimizers(self, opt):
         G_params = self.netG.get_param_list(opt.update_part)
-        #G_params = [p for name, p in self.netG.named_parameters() \
+        # G_params = [p for name, p in self.netG.named_parameters() \
         #        if (not name.startswith("coarse"))]
         if opt.isTrain:
             D_params = list(self.netD.parameters())
@@ -104,7 +104,7 @@ class InpaintModel(torch.nn.Module):
         if opt.isTrain:
             netD = networks.define_D(opt)
         else:
-            netD=None
+            netD = None
 
         if not opt.isTrain or opt.continue_train:
             netG = util.load_network(netG, 'G', opt.which_epoch, opt)
@@ -117,7 +117,7 @@ class InpaintModel(torch.nn.Module):
     # |data|: dictionary of the input data
 
     def preprocess_input(self, data):
-        b,c,h,w = data['image'].shape
+        # b,c,h,w = data['image'].shape
         # if self.opt.isTrain:
         #     # generate random stroke mask
         #     mask1 = self.mask_creator.stroke_mask(h, w, max_length=min(h,w)/2)
@@ -138,12 +138,11 @@ class InpaintModel(torch.nn.Module):
         #         data['mask'] = data['mask'].cuda()
         #     mask = data['mask']
         # move to GPU and change data types
-        mask = data['mask']
         if self.use_gpu():
             data['image'] = data['image'].cuda()
-        inputs = data['image']*(1-mask)
-        data['inputs'] = inputs
-        return inputs, data['image'], mask
+            data['inputs'] = data['inputs'].cuda()
+
+        return data['inputs'], data['image'], data['mask']
 
     def g_image_loss(self, coarse_image, fake_image, composed_image, real_image, mask):
         G_losses = {}
@@ -156,37 +155,36 @@ class InpaintModel(torch.nn.Module):
 
         if not self.opt.no_ganFeat_loss:
             raise NotImplementedError
-            num_D = len(pred_fake)
-            GAN_Feat_loss = self.FloatTensor(1).fill_(0)
-            for i in range(num_D):  # for each discriminator
-                # last output is the final prediction, so we exclude it
-                num_intermediate_outputs = len(pred_fake[i]) - 1
-                for j in range(num_intermediate_outputs):  # for each layer output
-                    unweighted_loss = self.criterionFeat(
-                        pred_fake[i][j], pred_real[i][j].detach())
-                    GAN_Feat_loss += unweighted_loss * self.opt.lambda_feat / num_D
-            G_losses['GAN_Feat'] = GAN_Feat_loss
+            # this below was unreachable code....???
+            # num_D = len(pred_fake)
+            # GAN_Feat_loss = self.FloatTensor(1).fill_(0)
+            # for i in range(num_D):  # for each discriminator
+            #     # last output is the final prediction, so we exclude it
+            #     num_intermediate_outputs = len(pred_fake[i]) - 1
+            #     for j in range(num_intermediate_outputs):  # for each layer output
+            #         unweighted_loss = self.criterionFeat(
+            #             pred_fake[i][j], pred_real[i][j].detach())
+            #         GAN_Feat_loss += unweighted_loss * self.opt.lambda_feat / num_D
+            # G_losses['GAN_Feat'] = GAN_Feat_loss
 
         if not self.opt.no_vgg_loss and not self.opt.no_fine_loss:
             G_losses['VGG'] = self.criterionVGG(fake_image, real_image) \
-                * self.opt.lambda_vgg
+                              * self.opt.lambda_vgg
         if not self.opt.no_l1_loss:
             if coarse_image is not None:
                 G_losses['L1c'] = torch.nn.functional.l1_loss(coarse_image, real_image) * self.opt.lambda_l1
             if not self.opt.no_fine_loss:
-                G_losses['L1f'] = torch.nn.functional.l1_loss(fake_image, real_image)  * self.opt.lambda_l1
+                G_losses['L1f'] = torch.nn.functional.l1_loss(fake_image, real_image) * self.opt.lambda_l1
         return G_losses
-
 
     def compute_generator_loss(self, inputs, real_image, mask):
 
         coarse_image, fake_image = self.generate_fake(
             inputs, real_image, mask)
 
-        composed_image = fake_image*mask + inputs*(1-mask)
+        composed_image = fake_image * mask + inputs * (1 - mask)
 
         G_losses = self.g_image_loss(coarse_image, fake_image, composed_image, real_image, mask)
-
 
         return G_losses, coarse_image, composed_image
 
@@ -197,7 +195,7 @@ class InpaintModel(torch.nn.Module):
                 coarse_image, fake_image = self.generate_fake(inputs, real_image, mask)
                 fake_image = fake_image.detach()
                 fake_image.requires_grad_()
-                composed_image = fake_image*mask + inputs*(1-mask)
+                composed_image = fake_image * mask + inputs * (1 - mask)
 
             pred_fake, pred_real = self.discriminate(
                 composed_image, real_image, mask)

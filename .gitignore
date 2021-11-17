@@ -107,3 +107,4 @@ ENV/
 .idea/
 small_test/
 non-necessary/
+data/

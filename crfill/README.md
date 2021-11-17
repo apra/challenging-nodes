@@ -84,6 +84,10 @@ To use the web app, these additional packages are required:
 
 then open http://localhost:2334 in the browser to use the web app
 
+```
+singularity shell --nv --bind $SCRATCH container.sif
+```
+
 ## Citing
 ```
 @inproceedings{zeng2021generative,

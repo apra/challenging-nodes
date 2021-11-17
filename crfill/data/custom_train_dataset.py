@@ -100,7 +100,7 @@ class CustomTrainDataset(BaseDataset):
                           'bounding_box': image_mask_bbox,
                           'full_image': normalize_cxr(full_image),
                           'image': image_tensor.float(),
-                          'masked_image': masked_image_tensor.float(),
+                          'inputs': masked_image_tensor.float(),
                           'mask': mask_tensor.float(),
                           'path': image_path,
                           }

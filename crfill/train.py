@@ -35,7 +35,7 @@ iter_counter = IterationCounter(opt, len(dataloader_train))
 # create tool for visualization
 writer = Logger(f"output/{opt.name}")
 
-ts_writer = SummaryWriter()
+ts_writer = SummaryWriter(f'{opt.checkpoints_dir}/tensorboard')
 
 trainer.save('latest')
 
