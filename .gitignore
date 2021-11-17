@@ -108,3 +108,4 @@ ENV/
 small_test/
 non-necessary/
 data/
+crfill/docker_folder/images
