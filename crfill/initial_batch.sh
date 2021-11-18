@@ -13,5 +13,5 @@ module load 2021
 module load Python/3.9.5-GCCcore-10.3.0
 
 #Create output directory on scratch
-mkdir -p "$TMP_DIR/spapa"
-cp -r $HOME/data/ "$TMP_DIR/spapa"
+mkdir -p "$TMPDIR/spapa"
+cp -r $HOME/data/ "$TMPDIR/spapa"
