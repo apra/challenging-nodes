@@ -2,7 +2,8 @@
 #SBATCH -t 02:00
 #SBATCH --mail-type=BEGIN,END
 #SBATCH --mail-user=samuele.papa@gmail.com
-#SBATCH -p gpu_short
+#SBATCH -p gpu_shared
+#SBATCH --gpus-per-node=gtx1080ti:1
 #SBATCH -N 1
 #SBATCH --output=array_%A.out
 #SBATCH --error=array_%A.err
