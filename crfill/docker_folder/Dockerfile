@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.0.3-cudnn8-devel-ubuntu20.04
+FROM nvidia/cuda:11.3.0-cudnn8-devel-ubuntu20.04
 
 # Based on https://github.com/anurag/fastai-course-1/
 
@@ -34,7 +34,7 @@ USER $USERNAME
 WORKDIR /home/$USERNAME
 
 RUN conda install -y python=$PYTHON_VERSION && \
-  conda install -y pytorch torchvision cudatoolkit=11.0 -c pytorch && \
+  conda install -y pytorch torchvision cudatoolkit=11.3 -c pytorch && \
   conda install -y h5py scikit-learn matplotlib seaborn \
   pandas mkl-service cython tqdm flask=1.1.2 requests=2.24.0 pillow=8.0.1 && \
   conda clean -tipy
