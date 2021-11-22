@@ -25,7 +25,7 @@ run_train()
         --name \
         debug \
         --checkpoints_dir \
-        checkpoints/1 \
+        /log/checkpoints/1 \
         --dataset_mode \
         custom_train \
         --train_image_dir \
@@ -57,7 +57,7 @@ slurm_submit()
 {
 singularity exec --no-home --nv \
     --bind "$DATA":/data \
-    --bind $LOGGING_DIR:$LOGGING_DIR \
+    --bind $LOGGING_DIR:"/log/$LOGGING_DIR" \
     --bind $DATA_ROOT \
     --bind "$JOBS_SOURCE" \
     --bind "$DATA" \
