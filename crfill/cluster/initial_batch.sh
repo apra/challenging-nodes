@@ -52,6 +52,9 @@ run_train()
         arrange"
 }
 COMMAND=$(run_train)
+
+slurm_submit()
+{
 singularity exec --no-home --nv \
     --bind "$DATA":/data \
     --bind $LOGGING_DIR:$LOGGING_DIR \
@@ -61,3 +64,6 @@ singularity exec --no-home --nv \
     --pwd "$JOBS_SOURCE" \
     $SINGULARITYIMAGE \
     $COMMAND &
+}
+
+echo $(slurm_submit $COMMAND)
