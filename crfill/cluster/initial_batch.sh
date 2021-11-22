@@ -8,11 +8,11 @@
 #SBATCH --output=test_%A.out
 #SBATCH --error=test_%A.err
 
-JOBS_SOURCE="$HOME/challenging_nodes/crfill"
+JOBS_SOURCE="$HOME/challenging-nodes/crfill"
 SINGULARITYIMAGE=$HOME/image.sif
 DATA="$TMPDIR/spapa"
 
-LOGGING_DIR="$HOME/challenging_nodes/crfill/checkpoints"
+LOGGING_DIR="$HOME/challenging-nodes/crfill/checkpoints"
 
 #Create output directory on scratch
 mkdir -p "$DATA"
