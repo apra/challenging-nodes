@@ -107,8 +107,6 @@ class CustomTrainDataset(BaseDataset):
         # input image (real images)
         image_path = ''
         index = self.get_true_index(index)
-        print(index)
-        pass
         try:
             image_path = self.paths_and_nodules[index][0]
             image_mask_bbox = self.paths_and_nodules[index][1]
