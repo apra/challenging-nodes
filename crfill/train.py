@@ -11,6 +11,8 @@ from torchvision.utils import make_grid
 from trainers import create_trainer
 from torch.utils.tensorboard import SummaryWriter
 from util.util import set_all_seeds
+from trainers.pix2pix_trainer import Pix2PixTrainer
+
 from torchvision import datasets, transforms
 from util.plot_util import draw_bounding_boxes
 # parse options
@@ -25,8 +27,9 @@ print(' '.join(sys.argv))
 dataloader_train, dataloader_val = data.create_dataloader_trainval(opt)
 
 # create trainer for our model
-trainer = create_trainer(opt)
-model = trainer.pix2pix_model
+# trainer = create_trainer(opt)
+trainer = Pix2PixTrainer(opt)
+model = trainer.model
 
 # create tool for counting iterations
 iter_counter = IterationCounter(opt, len(dataloader_train))
@@ -65,14 +68,18 @@ for epoch in iter_counter.training_epochs():
             # ts_writer.add_image('inputs',
             #                 draw_bounding_boxes(data_i['full_image'],data_i['bounding_box']),
             #                 iter_counter.total_steps_so_far)
-            infer_out,inp = trainer.pix2pix_model.forward(data_i, mode='inference')
+            ts_writer.add_image('train/original_cropped',
+                               make_grid((data_i['image']+1)/2),
+                               iter_counter.total_steps_so_far)
+
+            infer_out,inp = trainer.model.forward(data_i, mode='inference')
             vis = (make_grid(inp[:num_print])+1)/2
-            ts_writer.add_image('infer_in',
+            ts_writer.add_image('train/infer_in',
                                     vis,
                                     iter_counter.total_steps_so_far)
             vis = (make_grid(infer_out[:num_print])+1)/2
             vis = torch.clamp(vis, 0,1)
-            ts_writer.add_image('infer_out',
+            ts_writer.add_image('train/infer_out',
                     vis,
                     iter_counter.total_steps_so_far)
             generated = trainer.get_latest_generated()
@@ -119,8 +126,7 @@ for epoch in iter_counter.training_epochs():
                 psnr_total += psnr.sum().item()
                 num += bsize
             psnr_total /= num
-            writer.write_scalar("val.psnr", psnr_total, iter_counter.total_steps_so_far)
-            ts_writer.add_scalar("val.psnr", psnr_total, iter_counter.total_steps_so_far)
+            ts_writer.add_scalar("val/psnr", psnr_total, iter_counter.total_steps_so_far)
             model.train()
     trainer.update_learning_rate(epoch)
     iter_counter.record_epoch_end()

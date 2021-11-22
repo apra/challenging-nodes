@@ -16,6 +16,7 @@ import pickle
 class BaseOptions():
     def __init__(self):
         self.initialized = False
+        self.isTrain = False
 
     def initialize(self, parser):
         # default options

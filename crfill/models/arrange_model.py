@@ -9,7 +9,7 @@ class ArrangeModel(InpaintModel):
         InpaintModel.modify_commandline_options(parser, is_train)
         parser.add_argument('--load_base_g', type=str, required=False, help='load baseg')
         parser.add_argument('--load_base_d', type=str, required=False, help='load based')
-        parser.add_argument('--lambda_ref', type=float, default=1, help='weightloss')
+        parser.add_argument('--lambda_ref', type=float, default=1, help='This is actually lambda in the paper, weight of the CR loss.')
         return parser
 
     def __init__(self, opt):
@@ -98,6 +98,7 @@ class ArrangeModel(InpaintModel):
             D_losses['D_Fake'] = self.criterionGAN(pred_fake, False,
                                                    for_discriminator=True)
             D_losses['D_real'] = self.criterionGAN(pred_real, True,
+
                                                    for_discriminator=True)
             _netD = self.netD
             self.netD = self.netD_aux
@@ -112,9 +113,9 @@ class ArrangeModel(InpaintModel):
         return D_losses
 
     def compute_generator_loss(self, inputs, real_image, mask):
-        if not self.opt.no_ganFeat_loss:
-            raise NotImplementedError
-        if not self.opt.no_vgg_loss:
+        # if not self.opt.no_ganFeat_loss:
+        #     raise NotImplementedError
+        if self.opt.vgg_loss:
             raise NotImplementedError
         coarse_image, fake_image, aux_image, recon_aux = self.generate_fake(
                 inputs, real_image, mask)

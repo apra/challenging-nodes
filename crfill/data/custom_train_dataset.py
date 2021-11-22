@@ -1,6 +1,6 @@
 import torchvision.transforms
 
-from data.base_dataset import get_params, get_transform, BaseDataset
+from data.base_dataset import get_params, get_transform, BaseDataset, basic_transform
 from PIL import Image
 import os
 import pdb
@@ -61,12 +61,14 @@ class CustomTrainDataset(BaseDataset):
             self.end_fold_idx = self.full_dataset_size - 1
             self.fold_size = self.full_dataset_size - self.begin_fold_idx
         else:
-            self.end_fold_idx =  self.begin_fold_idx + self.fold_size - 1
+            self.end_fold_idx = self.begin_fold_idx + self.fold_size - 1
 
         if self.mod == 'train':
             self.dataset_size = self.full_dataset_size - self.fold_size
         elif self.mod == 'valid':
             self.dataset_size = self.fold_size
+
+        self.transform = basic_transform()
 
     def get_true_index(self, index):
         if self.mod == "train":
@@ -104,7 +106,8 @@ class CustomTrainDataset(BaseDataset):
         return self.dataset_size
 
     def __getitem__(self, index):
-        # input image (real images)
+        # TODO make this process much faster, remove all useless checks
+        #input image (real images)
         image_path = ''
         index = self.get_true_index(index)
         try:
@@ -122,14 +125,14 @@ class CustomTrainDataset(BaseDataset):
             cropped_masked_image, mask_array = mask_image(cropped_image, new_mask_bbox)
 
             # params = get_params(self.opt, cropped_image.shape)
-            transform_image = get_transform(self.opt, '')
+
             mask_tensor = torch.Tensor(mask_array)
-            image_tensor = transform_image(cropped_image)
-            masked_image_tensor = transform_image(
-                cropped_masked_image)  # TODO is there any randomness in the transform -- then we get different transforms on original and masked...
+            image_tensor = self.transform(cropped_image)
+            masked_image_tensor = self.transform(cropped_masked_image)
             input_dict = {
                 'bounding_box': image_mask_bbox,
                 'full_image': normalize_cxr(full_image),
+                # TODO: remove the ones above when training properly, it's not necessary.
                 'image': image_tensor.float(),
                 'inputs': masked_image_tensor.float(),
                 'mask': mask_tensor.float(),

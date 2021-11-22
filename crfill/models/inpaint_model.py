@@ -46,7 +46,7 @@ class InpaintModel(torch.nn.Module):
             self.criterionGAN = networks.GANLoss(
                 opt.gan_mode, tensor=self.FloatTensor, opt=self.opt)
             self.criterionFeat = torch.nn.L1Loss()
-            if not opt.no_vgg_loss:
+            if opt.vgg_loss:
                 self.criterionVGG = networks.VGGLoss(self.opt.gpu_ids)
 
     # Entry point for all calls involving forward pass
@@ -153,28 +153,28 @@ class InpaintModel(torch.nn.Module):
             G_losses['GAN'] = self.criterionGAN(pred_fake, True,
                                                 for_discriminator=False)
 
-        if not self.opt.no_ganFeat_loss:
-            raise NotImplementedError
-            # this below was unreachable code....???
-            # num_D = len(pred_fake)
-            # GAN_Feat_loss = self.FloatTensor(1).fill_(0)
-            # for i in range(num_D):  # for each discriminator
-            #     # last output is the final prediction, so we exclude it
-            #     num_intermediate_outputs = len(pred_fake[i]) - 1
-            #     for j in range(num_intermediate_outputs):  # for each layer output
-            #         unweighted_loss = self.criterionFeat(
-            #             pred_fake[i][j], pred_real[i][j].detach())
-            #         GAN_Feat_loss += unweighted_loss * self.opt.lambda_feat / num_D
-            # G_losses['GAN_Feat'] = GAN_Feat_loss
+        # if not self.opt.no_ganFeat_loss:
+        #     raise NotImplementedError
+        #     # this below was unreachable code....???
+        #     # num_D = len(pred_fake)
+        #     # GAN_Feat_loss = self.FloatTensor(1).fill_(0)
+        #     # for i in range(num_D):  # for each discriminator
+        #     #     # last output is the final prediction, so we exclude it
+        #     #     num_intermediate_outputs = len(pred_fake[i]) - 1
+        #     #     for j in range(num_intermediate_outputs):  # for each layer output
+        #     #         unweighted_loss = self.criterionFeat(
+        #     #             pred_fake[i][j], pred_real[i][j].detach())
+        #     #         GAN_Feat_loss += unweighted_loss * self.opt.lambda_feat / num_D
+        #     # G_losses['GAN_Feat'] = GAN_Feat_loss
 
-        if not self.opt.no_vgg_loss and not self.opt.no_fine_loss:
+        if self.opt.vgg_loss and not self.opt.no_fine_loss:
             G_losses['VGG'] = self.criterionVGG(fake_image, real_image) \
                               * self.opt.lambda_vgg
         if not self.opt.no_l1_loss:
             if coarse_image is not None:
-                G_losses['L1c'] = torch.nn.functional.l1_loss(coarse_image, real_image) * self.opt.lambda_l1
+                G_losses['L1_coarse'] = torch.nn.functional.l1_loss(coarse_image, real_image) * self.opt.beta_l1
             if not self.opt.no_fine_loss:
-                G_losses['L1f'] = torch.nn.functional.l1_loss(fake_image, real_image) * self.opt.lambda_l1
+                G_losses['L1_fine'] = torch.nn.functional.l1_loss(fake_image, real_image) * self.opt.beta_l1
         return G_losses
 
     def compute_generator_loss(self, inputs, real_image, mask):

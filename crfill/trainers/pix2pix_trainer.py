@@ -5,7 +5,10 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 import pdb
 from models.networks.sync_batchnorm import DataParallelWithCallback
 import models
-#from models.pix2pix_model import Pix2PixModel
+import models.arrange_model
+
+
+# from models.pix2pix_model import Pix2PixModel
 
 
 class Pix2PixTrainer():
@@ -17,25 +20,26 @@ class Pix2PixTrainer():
 
     def __init__(self, opt):
         self.opt = opt
-        self.pix2pix_model = models.create_model(opt)
+        # self.models = models.create_model(opt)
+        self.model = models.arrange_model.ArrangeModel(opt=opt)
         if len(opt.gpu_ids) > 0:
-            self.pix2pix_model = DataParallelWithCallback(self.pix2pix_model,
-                                                          device_ids=opt.gpu_ids)
-            self.pix2pix_model_on_one_gpu = self.pix2pix_model.module
+            self.model = DataParallelWithCallback(self.model,
+                                                  device_ids=opt.gpu_ids)
+            self.model_on_one_gpu = self.model.module
         else:
-            self.pix2pix_model_on_one_gpu = self.pix2pix_model
+            self.model_on_one_gpu = self.model
 
         self.generated = None
         self.inputs = None
         if opt.isTrain:
             self.optimizer_G, self.optimizer_D = \
-                self.pix2pix_model_on_one_gpu.create_optimizers(opt)
+                self.model_on_one_gpu.create_optimizers(opt)
             self.old_lr = opt.lr
 
     def run_generator_one_step(self, data, i):
         self.optimizer_G.zero_grad()
-        g_losses, inputs, generated = self.pix2pix_model(data, mode='generator')
-        g_loss = sum(g_losses.values()).mean()
+        g_losses, inputs, generated = self.model(data, mode='generator')
+        g_loss = sum(g_losses.values())
         g_loss.backward()
         self.optimizer_G.step()
         self.g_losses = g_losses
@@ -45,9 +49,8 @@ class Pix2PixTrainer():
     def run_discriminator_one_step(self, data, i):
         self.d_losses = {}
         if not self.opt.no_gan_loss:
-
             self.optimizer_D.zero_grad()
-            d_losses, inputs = self.pix2pix_model(data, mode='discriminator')
+            d_losses, inputs = self.model(data, mode='discriminator')
             d_loss = sum(d_losses.values()).mean()
             d_loss.backward()
             self.optimizer_D.step()
@@ -61,6 +64,7 @@ class Pix2PixTrainer():
 
     def get_latest_generated(self):
         return self.generated
+
     def get_latest_inputs(self):
         return self.inputs
 
@@ -68,7 +72,7 @@ class Pix2PixTrainer():
         self.update_learning_rate(epoch)
 
     def save(self, epoch):
-        self.pix2pix_model_on_one_gpu.save(epoch)
+        self.model_on_one_gpu.save(epoch)
 
     ##################################################################
     # Helper functions
