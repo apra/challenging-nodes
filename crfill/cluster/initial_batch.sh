@@ -8,21 +8,58 @@
 #SBATCH --output=test_%A.out
 #SBATCH --error=test_%A.err
 
+
+
 JOBS_SOURCE=$HOME/crfill
 SINGULARITYIMAGE=$HOME/crfill.sif
 DATA="$TMPDIR/spapa"
 
+LOGGING_DIR=$HOME/crfill/checkpoints
+
 #Create output directory on scratch
 mkdir -p "$TMPDIR/spapa"
 cp -r $HOME/data/ "$DATA"
-
+run_train()
+{
+  echo "python -u train.py \
+        --dataset_mode_train \
+        custom_train \
+        --name \
+        debug \
+        --checkpoints_dir \
+        checkpoints/1 \
+        --dataset_mode \
+        custom_train \
+        --train_image_dir \
+        /data/images/cxr_images/proccessed_data/images \
+        --train_nodule_list \
+        /data/images/cxr_images/proccessed_data/metadata.csv \
+        --netG \
+        twostagend \
+        --netD \
+        deepfill \
+        --preprocess_mode \
+        none \
+        --validation_freq \
+        100 \
+        --gpu_ids \
+        0,1 \
+        --niter \
+        50 \
+        --batchSize \
+        64 \
+        --display_freq \
+        20 \
+        --model \
+        arrange"
+}
+COMMAND=$(run_train)
 singularity exec --no-home --nv \
     --bind "$DATA":/data \
-    --bind $EXPERIMENT_DIR:$EXPERIMENT_DIR_CONTAINER \
+    --bind $LOGGING_DIR:$LOGGING_DIR \
     --bind $DATA_ROOT \
-    --bind $MASKS_ROOT_DIR \
     --bind "$JOBS_SOURCE" \
-    --bind "$TMPDIR" \
-    --pwd /hissl \
+    --bind "$DATA" \
+    --pwd "$JOBS_SOURCE" \
     $SINGULARITYIMAGE \
     $COMMAND &
