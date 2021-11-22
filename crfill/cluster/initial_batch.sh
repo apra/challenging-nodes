@@ -3,21 +3,19 @@
 #SBATCH --mail-type=BEGIN,END
 #SBATCH --mail-user=samuele.papa@gmail.com
 #SBATCH -p gpu_shared
-#SBATCH --gpus-per-node=gtx1080ti:1
+#SBATCH --gpus-per-node=gtx1080ti:2
 #SBATCH -N 1
 #SBATCH --output=test_%A.out
 #SBATCH --error=test_%A.err
 
-
-
-JOBS_SOURCE=$HOME/crfill
-SINGULARITYIMAGE=$HOME/crfill.sif
+JOBS_SOURCE="$HOME/challenging_nodes/crfill"
+SINGULARITYIMAGE=$HOME/image.sif
 DATA="$TMPDIR/spapa"
 
-LOGGING_DIR=$HOME/crfill/checkpoints
+LOGGING_DIR="$HOME/challenging_nodes/crfill/checkpoints"
 
 #Create output directory on scratch
-mkdir -p "$TMPDIR/spapa"
+mkdir -p "$DATA"
 cp -r $HOME/data/ "$DATA"
 run_train()
 {
