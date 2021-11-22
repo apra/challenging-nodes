@@ -58,7 +58,6 @@ slurm_submit()
 singularity exec --no-home --nv \
     --bind "$DATA":/data \
     --bind $LOGGING_DIR:"/log/$LOGGING_DIR" \
-    --bind $DATA_ROOT \
     --bind "$JOBS_SOURCE" \
     --bind "$DATA" \
     --pwd "$JOBS_SOURCE" \
