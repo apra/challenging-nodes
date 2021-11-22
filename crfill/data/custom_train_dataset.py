@@ -40,15 +40,42 @@ class CustomTrainDataset(BaseDataset):
                             help='path to the file that contains nodule locations')
         parser.add_argument('--train_image_postfix', type=str, default=".mha",
                             help='image extension')
-        parser.add_argument('--crop_around_mask_size', type=str, default=256,
+        parser.add_argument('--crop_around_mask_size', type=int, default=256,
                             help='size of crop around the mask, default=256')
+        parser.add_argument('--fold', type=int, default=0,
+                            help='current fold to be selected for heldout validation')
+        parser.add_argument('--num_folds', type=int, default=10,
+                            help='number of folds for the validation')
         return parser
 
-    def initialize(self, opt):
+    def initialize(self, opt, mod):
         self.opt = opt
+        self.mod = mod
         self.paths_and_nodules = self.get_paths_and_nodules()
         size = len(self.paths_and_nodules)
-        self.dataset_size = size
+        self.full_dataset_size = size
+        self.fold_size = int(self.full_dataset_size / opt.num_folds)
+        self.begin_fold_idx = opt.fold * self.fold_size
+        if opt.fold == opt.num_folds - 1:
+            # this is the last fold, take all the remaining samples
+            self.end_fold_idx = self.full_dataset_size - 1
+            self.fold_size = self.full_dataset_size - self.begin_fold_idx
+        else:
+            self.end_fold_idx =  self.begin_fold_idx + self.fold_size - 1
+
+        if self.mod == 'train':
+            self.dataset_size = self.full_dataset_size - self.fold_size
+        elif self.mod == 'valid':
+            self.dataset_size = self.fold_size
+
+    def get_true_index(self, index):
+        if self.mod == "train":
+            if index < self.begin_fold_idx:
+                return index
+            else:
+                return index + self.end_fold_idx
+        elif self.mod == "valid":
+            return self.begin_fold_idx + index
 
     def get_paths_and_nodules(self):
         image_dir = self.opt.train_image_dir
@@ -79,32 +106,38 @@ class CustomTrainDataset(BaseDataset):
     def __getitem__(self, index):
         # input image (real images)
         image_path = ''
+        index = self.get_true_index(index)
+        print(index)
+        pass
         try:
             image_path = self.paths_and_nodules[index][0]
             image_mask_bbox = self.paths_and_nodules[index][1]
             full_image = self.mha_loader(image_path)
             crop_size = self.opt.crop_around_mask_size
 
-            image_mask_bbox = mask_convention_setter(image_mask_bbox)  # use this method to set conventions for mask bbox
+            image_mask_bbox = mask_convention_setter(
+                image_mask_bbox)  # use this method to set conventions for mask bbox
 
-            cropped_image, new_mask_bbox = crop_around_mask_bbox(full_image, image_mask_bbox, crop_size=crop_size)  # Crop around nodule
-            cropped_image = np.array(normalize_cxr(cropped_image),dtype='float32') # divide 4095
+            cropped_image, new_mask_bbox = crop_around_mask_bbox(full_image, image_mask_bbox,
+                                                                 crop_size=crop_size)  # Crop around nodule
+            cropped_image = np.array(normalize_cxr(cropped_image), dtype='float32')  # divide 4095
             cropped_masked_image, mask_array = mask_image(cropped_image, new_mask_bbox)
 
-            #params = get_params(self.opt, cropped_image.shape)
+            # params = get_params(self.opt, cropped_image.shape)
             transform_image = get_transform(self.opt, '')
             mask_tensor = torch.Tensor(mask_array)
             image_tensor = transform_image(cropped_image)
-            masked_image_tensor = transform_image(cropped_masked_image)  #TODO is there any randomness in the transform -- then we get different transforms on original and masked...
+            masked_image_tensor = transform_image(
+                cropped_masked_image)  # TODO is there any randomness in the transform -- then we get different transforms on original and masked...
             input_dict = {
-                          'bounding_box': image_mask_bbox,
-                          'full_image': normalize_cxr(full_image),
-                          'image': image_tensor.float(),
-                          'inputs': masked_image_tensor.float(),
-                          'mask': mask_tensor.float(),
-                          'path': image_path,
-                          }
+                'bounding_box': image_mask_bbox,
+                'full_image': normalize_cxr(full_image),
+                'image': image_tensor.float(),
+                'inputs': masked_image_tensor.float(),
+                'mask': mask_tensor.float(),
+                'path': image_path,
+            }
             return input_dict
         except FileNotFoundError:
             print(f"skip {image_path}")
-            return self.__getitem__((index+1) % self.__len__())
+            return self.__getitem__((index + 1) % self.__len__())

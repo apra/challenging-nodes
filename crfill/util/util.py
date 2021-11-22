@@ -14,7 +14,7 @@ import os
 import argparse
 import dill as pickle
 import util.coco
-
+import random
 
 def save_obj(obj, name):
     with open(name, 'wb') as f:
@@ -192,6 +192,10 @@ def find_class_in_module(target_cls_name, module):
 
     return cls
 
+def set_all_seeds(seed: int):
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
 
 def save_network(net, label, epoch, opt):
     save_filename = '%s_net_%s.pth' % (epoch, label)

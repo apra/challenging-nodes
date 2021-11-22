@@ -18,7 +18,7 @@ class BaseDataset(data.Dataset):
     def modify_commandline_options(parser, is_train):
         return parser
 
-    def initialize(self, opt):
+    def initialize(self, opt, mode):
         pass
 
 
@@ -64,9 +64,6 @@ def get_transform(opt, params, method=Image.BICUBIC, normalize=True, toTensor=Tr
         w = opt.crop_size
         h = round(opt.crop_size / opt.aspect_ratio)
         transform_list.append(transforms.Lambda(lambda img: __resize(img, w, h, method)))
-
-    if opt.isTrain and (not opt.no_flip or force_flip):
-        transform_list.append(transforms.Lambda(lambda img: __flip(img, params['flip'])))
 
     if toTensor:
         transform_list += [transforms.ToTensor()]

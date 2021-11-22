@@ -1,37 +1,49 @@
-FROM nvidia/cuda:11.1.1-devel-ubuntu18.04
+FROM nvidia/cuda:11.0.3-cudnn8-devel-ubuntu20.04
 
-ENV CUDA_ROOT /usr/local/cuda/bin
-ENV LD_LIBRARY_PATH /usr/local/nvidia/lib64
+# Based on https://github.com/anurag/fastai-course-1/
 
-RUN ldconfig && \
-    apt-get -qq update && \
-    apt-get update && \
-    apt-get install -y libxext6 libsm6 libxrender1 libgl1-mesa-glx wget rsync tmux nano sudo dcmtk && \
-    rm -rf /var/lib/apt/lists/* && \
-    useradd -d /home/research -ms /bin/bash -g root -G sudo -p research research && \
-    echo "research ALL=(root) NOPASSWD:ALL"  > /etc/sudoers.d/research && \
-    chmod 0440 /etc/sudoers.d/research && \
-    mkdir /cache && \
-    chown research:root /cache
+ARG PYTHON_VERSION=3.7
+ARG CONDA_PYTHON_VERSION=3
+ARG CONDA_DIR=/opt/conda
+ARG USERNAME=docker
+ARG USERID=1000
 
-USER research
-WORKDIR /home/research
+# Instal basic utilities
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends git wget unzip bzip2 sudo build-essential && \
+  apt-get clean && \
+  rm -rf /var/lib/apt/lists/*
 
-RUN wget -q https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
-    bash Miniconda3-latest-Linux-x86_64.sh -b
+# Install miniconda
+ENV PATH $CONDA_DIR/bin:$PATH
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && \
+  wget https://repo.continuum.io/miniconda/Miniconda$CONDA_PYTHON_VERSION-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
+  echo 'export PATH=$CONDA_DIR/bin:$PATH' > /etc/profile.d/conda.sh && \
+  /bin/bash /tmp/miniconda.sh -b -p $CONDA_DIR && \
+  rm -rf /tmp/* && \
+  apt-get clean && \
+  rm -rf /var/lib/apt/lists/*
 
-ENV PATH "/home/research/miniconda3/bin:$PATH:$CUDA_ROOT"
-ENV DOCKER_CONFIG "true"
-ENV TERM "screen-256color"
+# Create the user
+RUN useradd --create-home -s /bin/bash --no-user-group -u $USERID $USERNAME && \
+  chown $USERNAME $CONDA_DIR -R && \
+  adduser $USERNAME sudo && \
+  echo "$USERNAME ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
-# Setup python packages
-RUN conda install python=3.6.12 && \
-    conda install pytorch torchvision tensorboard matplotlib tqdm flask=1.1.2 requests=2.24.0 pip pillow=8.0.1 && \
-    pip install dill==0.3.4 opencv-python==4.5.3.56 opencxr
+USER $USERNAME
+WORKDIR /home/$USERNAME
 
-ENV PATH "/code/tools:$PATH"
-ENV PYTHONPATH /code
-WORKDIR /code
+RUN conda install -y python=$PYTHON_VERSION && \
+  conda install -y pytorch torchvision cudatoolkit=11.0 -c pytorch && \
+  conda install -y h5py scikit-learn matplotlib seaborn \
+  pandas mkl-service cython tqdm flask=1.1.2 requests=2.24.0 pillow=8.0.1 && \
+  conda clean -tipy
 
-# Provide an open entrypoint for the docker
-ENTRYPOINT $0 $@
+RUN  pip install --upgrade pip && \
+  pip install pillow-simd dill==0.3.4 opencv-python==4.5.3.56 opencxr && \
+  rm -rf ~/.cache/pip \
+
+ENV CUDA_HOME=/usr/local/cuda
+ENV CUDA_ROOT=$CUDA_HOME
+ENV PATH=$PATH:$CUDA_ROOT/bin:$HOME/bin
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CUDA_ROOT/lib64
