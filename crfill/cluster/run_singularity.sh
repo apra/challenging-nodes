@@ -1,22 +1,13 @@
 #!/bin/bash
-#SBATCH -t 02:00
-#SBATCH --mail-type=BEGIN,END
-#SBATCH --mail-user=samuele.papa@gmail.com
-#SBATCH -p gpu_shared
-#SBATCH --gpus-per-node=gtx1080ti:2
-#SBATCH -N 1
-#SBATCH --output=test_%A.out
-#SBATCH --error=test_%A.err
 
-JOBS_SOURCE="$HOME/challenging-nodes/crfill"
-SINGULARITYIMAGE="$HOME/image_wallace.sif"
-DATA="$TMPDIR/spapa"
+ROOT="$HOME/challenge"
 
-LOGGING_DIR="$HOME/challenging-nodes/crfill/checkpoints"
+JOBS_SOURCE="$ROOT"
+SINGULARITYIMAGE="$ROOT/container.sif"
+DATA="/mnt/teuwen/archive/data/radiology/Challenge_NODE21"
 
-#Create output directory on scratch
-mkdir -p "$DATA"
-cp -r $HOME/data/ "$DATA"
+LOGGING_DIR="$ROOT/checkpoints"
+
 run_train()
 {
   echo "python -u train.py \
@@ -55,7 +46,7 @@ COMMAND=$(run_train)
 echo "Before slurm_submit"
 slurm_submit()
 {
-  singularity exec --nv \
+  singularity exec --no-home --nv \
     --bind "$DATA":/data \
     --bind $LOGGING_DIR:"/log/$LOGGING_DIR" \
     --bind "$JOBS_SOURCE" \

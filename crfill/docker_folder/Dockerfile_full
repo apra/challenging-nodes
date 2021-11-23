@@ -2,6 +2,7 @@ FROM nvidia/cuda:11.3.0-cudnn8-devel-ubuntu20.04
 
 # Based on https://github.com/anurag/fastai-course-1/
 
+ARG PYTHON_VERSION=3.7
 ARG CONDA_PYTHON_VERSION=3
 ARG CONDA_DIR=/opt/conda
 ARG USERNAME=docker
@@ -32,11 +33,6 @@ RUN useradd --create-home -s /bin/bash --no-user-group -u $USERID $USERNAME && \
 USER $USERNAME
 WORKDIR /home/$USERNAME
 
-ENV CUDA_HOME=/usr/local/cuda
-ENV CUDA_ROOT=$CUDA_HOME
-ENV PATH=$PATH:$CUDA_ROOT/bin:$HOME/bin
-ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CUDA_ROOT/lib64
-
 RUN conda install -y python=$PYTHON_VERSION && \
   conda install -y pytorch torchvision cudatoolkit=11.3 -c pytorch && \
   conda install -y h5py scikit-learn matplotlib seaborn \
@@ -44,5 +40,10 @@ RUN conda install -y python=$PYTHON_VERSION && \
   conda clean -tipy
 
 RUN  pip install --upgrade pip && \
-  pip install pillow-simd dill==0.3.4 opencv-python==4.5.3.56 && \
+  pip install SimpleITK pillow-simd dill==0.3.4 opencv-python==4.5.3.56 opencxr && \
   rm -rf ~/.cache/pip
+
+ENV CUDA_HOME=/usr/local/cuda
+ENV CUDA_ROOT=$CUDA_HOME
+ENV PATH=$PATH:$CUDA_ROOT/bin:$HOME/bin
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CUDA_ROOT/lib64
