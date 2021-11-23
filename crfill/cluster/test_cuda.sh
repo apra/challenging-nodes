@@ -9,6 +9,7 @@
 #SBATCH --error=test_%A.err
 
 JOBS_SOURCE="$HOME/challenging-nodes/crfill"
+SINGULARITYIMAGE=$HOME/image.sif
 
 run_train()
 {
