@@ -16,6 +16,8 @@ from trainers.pix2pix_trainer import Pix2PixTrainer
 from torchvision import datasets, transforms
 from util.plot_util import draw_bounding_boxes
 # parse options
+# temporary fix for LISA
+torch.set_num_threads(24)
 opt = TrainOptions().parse()
 
 set_all_seeds(opt.seed)
