@@ -39,7 +39,7 @@ class Pix2PixTrainer():
     def run_generator_one_step(self, data, i):
         self.optimizer_G.zero_grad()
         g_losses, inputs, generated = self.model(data, mode='generator')
-        g_loss = sum(g_losses.values())
+        g_loss = sum(g_losses.values()).mean()
         g_loss.backward()
         self.optimizer_G.step()
         self.g_losses = g_losses
