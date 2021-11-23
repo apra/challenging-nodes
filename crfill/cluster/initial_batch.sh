@@ -9,7 +9,7 @@
 #SBATCH --error=test_%A.err
 
 JOBS_SOURCE="$HOME/challenging-nodes/crfill"
-SINGULARITYIMAGE=$HOME/image.sif
+SINGULARITYIMAGE="$HOME/image_wallace.sif"
 DATA="$TMPDIR/spapa"
 
 LOGGING_DIR="$HOME/challenging-nodes/crfill/checkpoints"
