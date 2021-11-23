@@ -1,5 +1,4 @@
 import numpy as np
-from opencxr.utils.file_io import read_file
 from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
