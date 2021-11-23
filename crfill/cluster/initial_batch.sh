@@ -52,10 +52,10 @@ run_train()
         arrange"
 }
 COMMAND=$(run_train)
-
+echo "Before slurm_submit"
 slurm_submit()
 {
-singularity exec --no-home --nv \
+  singularity exec --no-home --nv \
     --bind "$DATA":/data \
     --bind $LOGGING_DIR:"/log/$LOGGING_DIR" \
     --bind "$JOBS_SOURCE" \
