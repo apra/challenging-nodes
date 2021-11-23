@@ -29,9 +29,9 @@ run_train()
         --dataset_mode \
         custom_train \
         --train_image_dir \
-        /data/images \
+        $DATA/images \
         --train_nodule_list \
-        /data/metadata.csv \
+        $DATA/metadata.csv \
         --netG \
         twostagend \
         --netD \
