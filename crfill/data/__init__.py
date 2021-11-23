@@ -60,6 +60,7 @@ def create_dataloader_trainval(opt):
     instance.initialize(opt, "train")
     print("dataset [%s] of size %d was created" %
           (type(instance).__name__, len(instance)))
+    print(f"Num workers: {int(opt.num_workers)}")
     dataloader_train = torch.utils.data.DataLoader(
         instance,
         batch_size=opt.batchSize,
