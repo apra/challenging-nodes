@@ -64,5 +64,5 @@ singularity exec --no-home --nv \
     $SINGULARITYIMAGE \
     $COMMAND &
 }
-
+echo "Test"
 echo $(slurm_submit $COMMAND)
