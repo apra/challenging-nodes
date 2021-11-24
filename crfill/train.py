@@ -9,7 +9,8 @@ from util.iter_counter import IterationCounter
 from logger import Logger
 from torchvision.utils import make_grid
 from trainers import create_trainer
-from torch.utils.tensorboard import SummaryWriter
+from torch.utils import tensorboard
+#from torch.utils.tensorboard import SummaryWriter
 from util.util import set_all_seeds
 from trainers.pix2pix_trainer import Pix2PixTrainer
 
@@ -39,7 +40,7 @@ iter_counter = IterationCounter(opt, len(dataloader_train))
 # create tool for visualization
 writer = Logger(f"output/{opt.name}")
 
-ts_writer = SummaryWriter(f'{opt.checkpoints_dir}/tensorboard')
+ts_writer = tensorboard.SummaryWriter(f'{opt.checkpoints_dir}/tensorboard')
 
 trainer.save('latest')
 
