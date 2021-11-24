@@ -2,8 +2,8 @@
 #SBATCH -t 11:00:00
 #SBATCH --mail-type=BEGIN,END
 #SBATCH --mail-user=samuele.papa@gmail.com
-#SBATCH -p gpu
-#SBATCH --gpus-per-node=gtx1080ti:4
+#SBATCH -p gpu_titanrtx
+#SBATCH --gpus-per-node=titanrtx:4
 #SBATCH --cpus-per-task=24
 #SBATCH -N 1
 #SBATCH --output=run_%A.out
