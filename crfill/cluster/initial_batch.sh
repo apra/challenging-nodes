@@ -25,8 +25,6 @@ STANDARD_PARAMS="--dataset_mode_train custom_train --dataset_mode custom_train -
 
 COMMAND="python -u train.py --name $NAME --num_workers 16 --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids 0,1 --batchSize 48 $STANDARD_PARAMS"
 
-echo $COMMAND
-
 slurm_submit()
 {
   singularity exec --nv \
@@ -39,7 +37,7 @@ slurm_submit()
     $COMMAND &
 }
 
-echo $(slurm_submit $COMMAND)
+slurm_submit
 
 
 NAME=batchsize_48_2gpus_beta_l15
@@ -48,8 +46,6 @@ STANDARD_PARAMS="--dataset_mode_train custom_train --dataset_mode custom_train -
 
 COMMAND="python -u train.py --name $NAME --num_workers 16 --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids 2,3 --beta_l1 1.5 --batchSize 48 $STANDARD_PARAMS"
 
-echo $COMMAND
-
 slurm_submit()
 {
   singularity exec --nv \
@@ -62,4 +58,4 @@ slurm_submit()
     $COMMAND &
 }
 
-echo $(slurm_submit $COMMAND)
+slurm_submit
