@@ -20,36 +20,36 @@ cp -r $HOME/data/ "$DATA"
 run_train()
 {
   echo "python -u train.py \
-        --dataset_mode_train \
-        custom_train \
-        --name \
-        debug \
-        --checkpoints_dir \
-        $LOGGING_DIR/1 \
-        --dataset_mode \
-        custom_train \
-        --train_image_dir \
-        $DATA/data/images \
-        --train_nodule_list \
-        $DATA/data/metadata.csv \
-        --netG \
-        twostagend \
-        --netD \
-        deepfill \
-        --preprocess_mode \
-        none \
-        --validation_freq \
-        100 \
-        --gpu_ids \
-        0,1 \
-        --niter \
-        50 \
-        --batchSize \
-        64 \
-        --display_freq \
-        20 \
-        --model \
-        arrange"
+--dataset_mode_train \
+custom_train \
+--name \
+debug \
+--checkpoints_dir \
+$LOGGING_DIR/1 \
+--dataset_mode \
+custom_train \
+--train_image_dir \
+$DATA/data/images \
+--train_nodule_list \
+$DATA/data/metadata.csv \
+--netG \
+twostagend \
+--netD \
+deepfill \
+--preprocess_mode \
+none \
+--validation_freq \
+100 \
+--gpu_ids \
+0,1 \
+--niter \
+50 \
+--batchSize \
+64 \
+--display_freq \
+20 \
+--model \
+arrange"
 }
 COMMAND=$(run_train)
 echo "Before slurm_submit"
