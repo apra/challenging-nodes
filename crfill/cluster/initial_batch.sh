@@ -49,6 +49,6 @@ singularity exec --nv \
 --bind "$DATA" \
 --pwd "$JOBS_SOURCE" \
 $SINGULARITYIMAGE \
-$COMMAND &
+$COMMAND
 
 echo "Second command ran"
