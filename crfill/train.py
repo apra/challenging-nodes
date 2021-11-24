@@ -71,7 +71,7 @@ for epoch in iter_counter.training_epochs():
             #                 draw_bounding_boxes(data_i['full_image'],data_i['bounding_box']),
             #                 iter_counter.total_steps_so_far)
             ts_writer.add_image('train/original_cropped',
-                               make_grid((data_i['image']+1)/2),
+                               make_grid((data_i['image'][:num_print]+1)/2),
                                iter_counter.total_steps_so_far)
 
             infer_out,inp = trainer.model.forward(data_i, mode='inference')
