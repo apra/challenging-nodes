@@ -2,7 +2,7 @@
 NAME=batchsize_48_2gpus
 
 JOBS_SOURCE="$HOME/challenging-nodes/crfill"
-SINGULARITYIMAGE="$HOME/image-wallace.sif"
+SINGULARITYIMAGE="$HOME/image_wallace.sif"
 DATA="$TMPDIR/spapa"
 
 mkdir -p "$DATA"
