@@ -25,19 +25,15 @@ STANDARD_PARAMS="--dataset_mode_train custom_train --dataset_mode custom_train -
 
 COMMAND="python -u train.py --name $NAME --num_workers 16 --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids 0,1 --batchSize 48 $STANDARD_PARAMS"
 
-slurm_submit()
-{
-  singularity exec --nv \
-    --bind "$DATA":/data \
-    --bind $LOGGING_DIR:"$LOGGING_DIR" \
-    --bind "$JOBS_SOURCE" \
-    --bind "$DATA" \
-    --pwd "$JOBS_SOURCE" \
-    $SINGULARITYIMAGE \
-    $COMMAND &
-}
 echo "Running first command"
-slurm_submit
+singularity exec --nv \
+--bind "$DATA":/data \
+--bind $LOGGING_DIR:"$LOGGING_DIR" \
+--bind "$JOBS_SOURCE" \
+--bind "$DATA" \
+--pwd "$JOBS_SOURCE" \
+$SINGULARITYIMAGE \
+$COMMAND &
 echo "First command ran"
 NAME=batchsize_48_2gpus_beta_l15
 
@@ -45,17 +41,14 @@ STANDARD_PARAMS="--dataset_mode_train custom_train --dataset_mode custom_train -
 
 COMMAND="python -u train.py --name $NAME --num_workers 16 --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids 2,3 --beta_l1 1.5 --batchSize 48 $STANDARD_PARAMS"
 
-slurm_submit()
-{
-  singularity exec --nv \
-    --bind "$DATA":/data \
-    --bind $LOGGING_DIR:"$LOGGING_DIR" \
-    --bind "$JOBS_SOURCE" \
-    --bind "$DATA" \
-    --pwd "$JOBS_SOURCE" \
-    $SINGULARITYIMAGE \
-    $COMMAND &
-}
 echo "Running second command"
-slurm_submit
+singularity exec --nv \
+--bind "$DATA":/data \
+--bind $LOGGING_DIR:"$LOGGING_DIR" \
+--bind "$JOBS_SOURCE" \
+--bind "$DATA" \
+--pwd "$JOBS_SOURCE" \
+$SINGULARITYIMAGE \
+$COMMAND &
+
 echo "Second command ran"
