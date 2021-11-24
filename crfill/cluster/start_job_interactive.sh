@@ -10,7 +10,7 @@ cp -r $HOME/data/ "$DATA"
 
 LOGGING_DIR="$HOME/challenging-nodes/crfill/checkpoints"
 
-singularity shell --no-home --nv \
+singularity shell --nv \
     --bind "$DATA":/data \
     --bind "$LOGGING_DIR" \
     --bind "$JOBS_SOURCE" \
