@@ -22,7 +22,7 @@ slurm_submit()
 {
 singularity exec --no-home --nv \
     --bind "$DATA":/data \
-    --bind "$LOGGING_DIR": \
+    --bind "$LOGGING_DIR" \
     --bind "$JOBS_SOURCE" \
     --pwd "$JOBS_SOURCE" \
     $SINGULARITYIMAGE \
