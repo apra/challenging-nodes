@@ -36,10 +36,9 @@ slurm_submit()
     $SINGULARITYIMAGE \
     $COMMAND &
 }
-
+echo "Running first command"
 slurm_submit
-
-
+echo "First command ran"
 NAME=batchsize_48_2gpus_beta_l15
 
 STANDARD_PARAMS="--dataset_mode_train custom_train --dataset_mode custom_train --train_image_dir /data/data/images --train_nodule_list /data/data/metadata.csv --netG twostagend --netD deepfill --preprocess_mode none --validation_freq 10000 --niter 600 --display_freq 1000 --model arrange"
@@ -57,5 +56,6 @@ slurm_submit()
     $SINGULARITYIMAGE \
     $COMMAND &
 }
-
+echo "Running second command"
 slurm_submit
+echo "Second command ran"
