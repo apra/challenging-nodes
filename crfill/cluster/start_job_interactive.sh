@@ -14,7 +14,7 @@ STANDARD_PARAMS="--dataset_mode_train custom_train --dataset_mode custom_train -
 
 run_train()
 {
-  echo "python -u train.py --name $NAME --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids 0,1 --batchSize 48 $STANDARD_PARAMS"
+  echo "python -u train.py --name $NAME --num_workers 16 --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids 0,1 --batchSize 48 $STANDARD_PARAMS"
 }
 COMMAND=$(run_train)
 
