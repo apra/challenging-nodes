@@ -3,6 +3,7 @@
 #SBATCH --mail-type=END
 #SBATCH --mail-user=samuele.papa@gmail.com
 #SBATCH -p gpu_titanrtx
+#SBATCH --mem 100G
 #SBATCH --gpus-per-node=titanrtx:4
 #SBATCH --cpus-per-task=24
 #SBATCH -N 1
@@ -25,7 +26,7 @@ NAME=batchsize_48_2gpus_beta_l15_lambda_feat05
 
 STANDARD_PARAMS="--dataset_mode_train custom_train --dataset_mode custom_train --train_image_dir /data --netG twostagend --netD deepfill --preprocess_mode none --validation_freq 2000 --niter 100 --display_freq 500 --model arrange"
 
-COMMAND="python -u train.py --name $NAME --num_workers 14 --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids 0,1 --beta_l1 1.5 --lambda_feat 0.5 --batchSize 48 $STANDARD_PARAMS"
+COMMAND="python -u train.py --name $NAME --num_workers 10 --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids 0,1 --beta_l1 1.5 --lambda_feat 0.5 --batchSize 48 $STANDARD_PARAMS"
 
 echo "Running $NAME"
 singularity exec --no-home --nv \
@@ -41,7 +42,7 @@ NAME=batchsize_48_2gpus_beta_l15
 
 STANDARD_PARAMS="--dataset_mode_train custom_train --dataset_mode custom_train --train_image_dir /data --netG twostagend --netD deepfill --preprocess_mode none --validation_freq 10000 --niter 600 --display_freq 1000 --model arrange"
 
-COMMAND="python -u train.py --name $NAME --num_workers 14 --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids 2,3 --beta_l1 1.5 --batchSize 48 $STANDARD_PARAMS"
+COMMAND="python -u train.py --name $NAME --num_workers 10 --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids 2,3 --beta_l1 1.5 --batchSize 48 $STANDARD_PARAMS"
 
 echo "Running $NAME"
 singularity exec --no-home --nv \
