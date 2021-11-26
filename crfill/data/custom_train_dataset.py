@@ -10,34 +10,18 @@ import csv
 import SimpleITK as sitk
 from torchvision.transforms import Compose, ToTensor
 from data.custom_transformations import mask_image, crop_around_mask_bbox, normalize_cxr, mask_convention_setter
-
-
-def is_image_file(filename, extensions='.mha'):
-    return any(filename.endswith(extension) for extension in extensions)
-
-
-def metadata_nonempty_dict(metadata_location):
-    """Reads whole csv to find image_name, creates dict with nonempty bboxes"""
-    # NOTE: conventions for the sequence of the mask, e.g. x,y,w,h can be changed later with mask_convention_setter
-    # TODO: only works for csv file, implement JSON
-    bboxes = {}
-    with open(metadata_location) as f_obj:
-        reader = csv.reader(f_obj, delimiter=',')
-        for line in reader:
-            _, h, img_name, _, w, x, y = [int(entry) if entry.isnumeric() else entry for entry in line]
-            if h != 0 and w != 0:  # only append nonempty bboxes
-                bboxes.setdefault(img_name, [])  # these two lines allow safe placing of multiple values for key
-                bboxes[img_name].append([x, y, w, h])
-    return bboxes
+from util.metadata_utils import get_paths_and_nodules
 
 
 class CustomTrainDataset(BaseDataset):
+    """Custom dataset class for positive xrays, folder structure should consist of main data folder with subfolders 'node21',
+       'chexpert' and 'mimic'. Each of these folders should contain their respective metadata.csv file. (for node21, I expect only
+       the images folder found inside of cxr_imaged/processed_data)"""
+
     @staticmethod
     def modify_commandline_options(parser, is_train):
         parser.add_argument('--train_image_dir', type=str, required=True,
                             help='path to the directory that contains photo images')
-        parser.add_argument('--train_nodule_list', type=str, required=True,
-                            help='path to the file that contains nodule locations')
         parser.add_argument('--train_image_postfix', type=str, default=".mha",
                             help='image extension')
         parser.add_argument('--crop_around_mask_size', type=int, default=256,
@@ -46,12 +30,19 @@ class CustomTrainDataset(BaseDataset):
                             help='current fold to be selected for heldout validation')
         parser.add_argument('--num_folds', type=int, default=10,
                             help='number of folds for the validation')
+        parser.add_argument('--include_chexpert', action='store_true',
+                            help='Include chexpert positive-lesion dataset')
+        parser.add_argument('--include_mimic', action='store_true',
+                            help='Include mimic positive-lesion dataset')
+        parser.add_argument('--node21_resample_count', type=int, default=0,
+                            help='How many times node21 data is resampled')
         return parser
 
     def initialize(self, opt, mod):
         self.opt = opt
         self.mod = mod
-        self.paths_and_nodules = self.get_paths_and_nodules()
+        self.paths_and_nodules = get_paths_and_nodules(self.opt.train_image_dir, self.opt.include_chexpert,
+                                                       self.opt.include_mimic, self.opt.node21_resample_count)
         size = len(self.paths_and_nodules)
         self.full_dataset_size = size
         self.fold_size = int(self.full_dataset_size / opt.num_folds)
@@ -78,20 +69,6 @@ class CustomTrainDataset(BaseDataset):
                 return index + self.end_fold_idx
         elif self.mod == "valid":
             return self.begin_fold_idx + index
-
-    def get_paths_and_nodules(self):
-        image_dir = self.opt.train_image_dir
-        nodule_list = self.opt.train_nodule_list
-        image_nodule_list = []
-        metadata_dict = metadata_nonempty_dict(nodule_list)
-        for root, dnames, fnames in sorted(os.walk(image_dir)):
-            for fname in fnames:
-                if is_image_file(fname):
-                    path = os.path.join(root, fname)
-                    if fname in metadata_dict:
-                        for nodule in metadata_dict[fname]:
-                            image_nodule_list.append([path, nodule])
-        return image_nodule_list
 
     @staticmethod
     def mha_loader(image_path, return_spacing=False):
