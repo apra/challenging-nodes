@@ -26,7 +26,7 @@ cp -ra $HOME/data/. "$NODE21"
 
 NAME=batchsize_48_2gpus_beta_l15_lambda_feat05
 
-STANDARD_PARAMS="--seed 0  --batchSize 40 --dataset_mode_train custom_train --dataset_mode custom_train --train_image_dir /data --netG twostagend --netD deepfill --preprocess_mode none --validation_freq 2000 --niter 100 --display_freq 500 --model arrange"
+STANDARD_PARAMS="--seed 0  --batchSize 40 --dataset_mode_train custom_train --dataset_mode custom_train --train_image_dir /data --netG twostagend --netD deepfill --preprocess_mode none --validation_freq 20000 --niter 600 --display_freq 2000 --model arrange"
 
 COMMAND="python -u train.py --name $NAME --num_workers $NUM_WORKERS --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids 0,1 --beta_l1 1.5 --lambda_feat 0.5 $STANDARD_PARAMS"
 
