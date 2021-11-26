@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -t 11:00:00
-#SBATCH --mail-type=BEGIN,END
+#SBATCH --mail-type=END
 #SBATCH --mail-user=samuele.papa@gmail.com
 #SBATCH -p gpu_titanrtx
 #SBATCH --gpus-per-node=titanrtx:4
@@ -10,7 +10,7 @@
 #SBATCH --error=run_%A.err
 
 JOBS_SOURCE="$HOME/challenging-nodes/crfill"
-SINGULARITYIMAGE="$HOME/image_wallace.sif"
+SINGULARITYIMAGE="$HOME/crfill.sif"
 DATA="$TMPDIR/spapa"
 NODE21="$DATA/node21"
 
