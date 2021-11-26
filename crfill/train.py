@@ -18,7 +18,7 @@ from torchvision import datasets, transforms
 from util.plot_util import draw_bounding_boxes
 # parse options
 # temporary fix for LISA
-torch.set_num_threads(24)
+#torch.set_num_threads(24)
 opt = TrainOptions().parse()
 
 set_all_seeds(opt.seed)
@@ -43,6 +43,8 @@ writer = Logger(f"output/{opt.name}")
 ts_writer = tensorboard.SummaryWriter(f'{opt.checkpoints_dir}/tensorboard')
 
 trainer.save('latest')
+
+torch.multiprocessing.set_sharing_strategy('file_system')
 
 for epoch in iter_counter.training_epochs():
     iter_counter.record_epoch_start(epoch)
