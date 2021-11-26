@@ -48,7 +48,6 @@ def get_paths_and_nodules_helper(image_dir, chex_or_mimic=False):
         metadata_dict = metadata_dict_chex_mimic(nodule_list)
     else:
         metadata_dict = metadata_dict_node21(nodule_list)
-    image_dir = os.path.join(image_dir, "images")
     for root, dnames, fnames in sorted(os.walk(image_dir)):
         for fname in fnames:
             if is_image_file(fname):
