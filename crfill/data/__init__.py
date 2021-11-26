@@ -77,7 +77,7 @@ def create_dataloader_trainval(opt):
         instance,
         batch_size=opt.batchSize,
         shuffle=False,
-        num_workers=int(opt.num_workers),
+        num_workers=0,
         drop_last=False
     )
     return dataloader_train, dataloader_val
