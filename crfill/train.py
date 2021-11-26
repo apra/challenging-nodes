@@ -44,7 +44,7 @@ ts_writer = tensorboard.SummaryWriter(f'{opt.checkpoints_dir}/tensorboard')
 
 trainer.save('latest')
 
-torch.multiprocessing.set_sharing_strategy('file_system')
+#torch.multiprocessing.set_sharing_strategy('file_system')
 
 for epoch in iter_counter.training_epochs():
     iter_counter.record_epoch_start(epoch)
