@@ -15,7 +15,7 @@ SINGULARITYIMAGE="$HOME/crfill.sif"
 DATA="$TMPDIR/spapa"
 NODE21="$DATA/node21"
 
-NUM_WORKERS=10
+NUM_WORKERS=5
 
 LOGGING_DIR="$HOME/challenging-nodes/crfill/checkpoints"
 
