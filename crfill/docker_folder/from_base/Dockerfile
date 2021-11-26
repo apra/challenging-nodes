@@ -1,4 +1,4 @@
-FROM 8113ca687312
+FROM apra/pytorch-conda-nvidia
 
-RUN  pip install SimpleITK && \
+RUN  pip install SimpleITK tensorboard && \
   rm -rf ~/.cache/pip
