@@ -3,7 +3,7 @@
 #SBATCH --mail-type=END
 #SBATCH --mail-user=samuele.papa@gmail.com
 #SBATCH -p gpu_titanrtx
-#SBATCH --mem 100G
+#SBATCH --mem=100G
 #SBATCH --gpus-per-node=titanrtx:4
 #SBATCH --cpus-per-task=24
 #SBATCH -N 1
