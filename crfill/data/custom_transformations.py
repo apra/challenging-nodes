@@ -24,6 +24,25 @@ def mask_convention_setter(mask, invert=False):
         return mask
 
 
+def create_random_bboxes(number_of_bboxes, seed=0):
+    if seed:
+        np.random.seed(seed)
+    bbox_list = []
+    for i in range(number_of_bboxes):
+        # distributions that match closely what is found in the data
+        l_or_r = np.random.rand()  # x has this left and right factor because it occurs in lungs, not in between lungs
+        if l_or_r > 0.55:
+            x = min(930, np.random.normal(750, 75))
+        else:
+            x = max(20, np.random.normal(200, 75))
+
+        y = (np.random.beta(2, 2) + (1 / 7)) * 700
+        w = np.random.gamma(8, 7.5)
+        h = np.random.gamma(7, 8.4)
+        bbox_list.append([x, y, w, h])
+    return bbox_list
+
+
 def crop_around_mask_bbox(image: np.ndarray, mask_bbox, crop_size=256, seed=0, return_new_mask_bbox=True):
     """create random bbox of crop_size**2 that includes mask region and stays within image"""
     if len(image.shape) != 2:

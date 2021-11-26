@@ -1,10 +1,22 @@
 import csv
 import os
 from pathlib import Path
+import pandas as pd
 
 
 def is_image_file(filename, extensions='.mha'):
     return any(filename.endswith(extension) for extension in extensions)
+
+
+def metadata_list_negatives(metadata_location):
+    path_list = []
+    with open(metadata_location) as f_obj:
+        reader = csv.reader(f_obj, delimiter=',')
+        next(reader)  # skip header
+        for line in reader:
+            _, img_path = [entry for entry in line]
+            path_list.append(img_path)
+    return path_list
 
 
 def metadata_dict_node21(metadata_location):
@@ -81,3 +93,26 @@ def get_paths_and_nodules(image_dir, include_chexpert=True, include_mimic=True, 
 
     return total_image_nodule_list
 
+
+def get_paths_negatives(image_dir) -> list:
+    """Function to get the image paths of the negative dataset. Expects folder called 'negative' inside the passed directory.
+       If there exists a metadata.csv it will return the contents as list, if not it will create the metadata.csv as well."""
+    image_dir = Path(image_dir) / Path('negative')
+    metadata_loc = image_dir / Path('metadata.csv')
+    try:
+        path_list = metadata_list_negatives(metadata_loc)
+        print('Using the found metadata.csv for negative image paths')
+
+    except FileNotFoundError:
+        print('No metadata.csv found, performing file-walk to build one')
+        path_list = []
+        for root, dnames, fnames in sorted(os.walk(image_dir)):
+            for fname in fnames:
+                if is_image_file(fname):
+                    path = os.path.join(root, fname)
+                    path_list.append(path)
+        df = pd.DataFrame(path_list, columns=["img_path"])
+        save_loc = Path(image_dir) / Path('metadata.csv')
+        df.to_csv(str(save_loc))
+
+    return path_list
