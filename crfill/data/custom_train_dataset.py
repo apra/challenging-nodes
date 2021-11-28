@@ -90,12 +90,13 @@ class CustomTrainDataset(BaseDataset):
             image_path = self.paths_and_nodules[index][0]
             print(image_path)
             image_mask_bbox = self.paths_and_nodules[index][1]
+            print(image_mask_bbox)
             full_image = self.mha_loader(image_path)
             crop_size = self.opt.crop_around_mask_size
 
             image_mask_bbox = mask_convention_setter(
                 image_mask_bbox)  # use this method to set conventions for mask bbox
-
+            print(image_mask_bbox)
             cropped_image, new_mask_bbox = crop_around_mask_bbox(full_image, image_mask_bbox,
                                                                  crop_size=crop_size, seed=self.opt.seed)  # Crop around nodule
             cropped_image = np.array(normalize_cxr(cropped_image), dtype='float32')  # divide 4095
