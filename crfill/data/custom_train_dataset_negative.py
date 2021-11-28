@@ -9,14 +9,14 @@ import numpy as np
 import csv
 import SimpleITK as sitk
 from torchvision.transforms import Compose, ToTensor
-from data.custom_transformations import mask_image, crop_around_mask_bbox, normalize_cxr, mask_convention_setter
-from util.metadata_utils import get_paths_and_nodules
+from data.custom_transformations import mask_image, crop_around_mask_bbox, normalize_cxr, mask_convention_setter, create_random_bboxes
+from util.metadata_utils import get_paths_negatives
 
 
-class CustomTrainDataset(BaseDataset):
-    """Custom dataset class for positive xrays, folder structure should consist of main data folder with subfolders 'node21',
-       'chexpert' and 'mimic'. Each of these folders should contain their respective metadata.csv file. (for node21, I expect only
-       the images folder found inside of cxr_imaged/processed_data)"""
+class CustomTrainDatasetNegative(BaseDataset):
+    """Custom dataset class for negative xrays -- no nodules. Expects that within the main datafolder there exists a folder
+       'negative', that contains negative images in any subdirectory structure. If metadata.csv exists in 'negative' it will read it,
+       otherwise it will be created as well."""
 
     @staticmethod
     def modify_commandline_options(parser, is_train):
@@ -25,25 +25,21 @@ class CustomTrainDataset(BaseDataset):
         parser.add_argument('--train_image_postfix', type=str, default=".mha",
                             help='image extension')
         parser.add_argument('--crop_around_mask_size', type=int, default=256,
-                            help='size of crop around the mask, default=256')
+                            help='size of the cropped image')
         parser.add_argument('--fold', type=int, default=0,
                             help='current fold to be selected for heldout validation')
         parser.add_argument('--num_folds', type=int, default=10,
                             help='number of folds for the validation')
-        parser.add_argument('--include_chexpert', action='store_true',
-                            help='Include chexpert positive-lesion dataset')
-        parser.add_argument('--include_mimic', action='store_true',
-                            help='Include mimic positive-lesion dataset')
-        parser.add_argument('--node21_resample_count', type=int, default=0,
-                            help='How many times node21 data is resampled')
         return parser
 
-    def initialize(self, opt, path_and_nodules, mod):
+    def initialize(self, opt, mod):
         self.opt = opt
         self.mod = mod
-        self.paths_and_nodules = path_and_nodules
-
-        self.full_dataset_size = len(self.paths_and_nodules)
+        self.paths = get_paths_negatives(self.opt.train_image_dir)
+        size = len(self.paths)
+        self.full_dataset_size = size
+        # TODO: check whether below the right amount of bboxes are created -- in combination with the k-fold
+        self.bboxes = create_random_bboxes(number_of_bboxes=self.full_dataset_size, seed=self.opt.seed)
         self.fold_size = int(self.full_dataset_size / opt.num_folds)
         self.begin_fold_idx = opt.fold * self.fold_size
         if opt.fold == opt.num_folds - 1:
@@ -83,12 +79,12 @@ class CustomTrainDataset(BaseDataset):
 
     def __getitem__(self, index):
         # TODO make this process much faster, remove all useless checks
-        # input image (real images)
+        #input image (real images)
         image_path = ''
         index = self.get_true_index(index)
         try:
-            image_path = self.paths_and_nodules[index][0]
-            image_mask_bbox = self.paths_and_nodules[index][1]
+            image_path = self.paths_and_nodules[index]
+            image_mask_bbox = self.bboxes[index]  # TODO: check whether this goes correctly
             full_image = self.mha_loader(image_path)
             crop_size = self.opt.crop_around_mask_size
 
