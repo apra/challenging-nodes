@@ -61,6 +61,9 @@ def crop_around_mask_bbox(image: np.ndarray, mask_bbox, crop_size=256, seed=0, r
     crop_min_y = max(mask_y + mask_h - crop_size + 1, 0)
     crop_max_y = min(mask_y - 1, im_max_y - crop_size - 1)
 
+    if crop_max_x<=0 or crop_max_y<=0 or crop_max_y<=crop_min_y or crop_max_x<=crop_min_x:
+        print(f"The following is wrong: bbox: {mask_bbox}, image shape: {image.shape}")
+
     crop_x = np.random.randint(crop_min_x, crop_max_x)
     crop_y = np.random.randint(crop_min_y, crop_max_y)
 
