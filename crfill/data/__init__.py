@@ -6,6 +6,7 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 import importlib
 import torch.utils.data
 from data.base_dataset import BaseDataset
+from util.metadata_utils import get_paths_and_nodules
 
 
 def find_dataset_using_name(dataset_name):
@@ -22,9 +23,9 @@ def find_dataset_using_name(dataset_name):
     target_dataset_name = dataset_name.replace('_', '') + 'dataset'
     for name, cls in datasetlib.__dict__.items():
         if name.lower() == target_dataset_name.lower() \
-           and issubclass(cls, BaseDataset):
+                and issubclass(cls, BaseDataset):
             dataset = cls
-            
+
     if dataset is None:
         raise ValueError("In %s.py, there should be a subclass of BaseDataset "
                          "with class name that matches %s in lowercase." %
@@ -33,7 +34,7 @@ def find_dataset_using_name(dataset_name):
     return dataset
 
 
-def get_option_setter(dataset_name):    
+def get_option_setter(dataset_name):
     dataset_class = find_dataset_using_name(dataset_name)
     return dataset_class.modify_commandline_options
 
@@ -53,11 +54,15 @@ def create_dataloader(opt):
     )
     return dataloader
 
+
 def create_dataloader_trainval(opt):
     assert opt.isTrain
+    # get the path to images and the nodules locations, these are already shuffled
+    paths_and_nodules = get_paths_and_nodules(opt.train_image_dir, opt.include_chexpert,
+                                              opt.include_mimic, opt.node21_resample_count)
     dataset = find_dataset_using_name(opt.dataset_mode_train)
     instance = dataset()
-    instance.initialize(opt, "train")
+    instance.initialize(opt, paths_and_nodules, 'train')
     print("dataset [%s] of size %d was created" %
           (type(instance).__name__, len(instance)))
     print(f"Num workers: {int(opt.num_workers)}. Threads available: {torch.get_num_threads()}")
@@ -70,7 +75,7 @@ def create_dataloader_trainval(opt):
     )
     dataset = find_dataset_using_name(opt.dataset_mode_train)
     instance = dataset()
-    instance.initialize(opt, 'valid')
+    instance.initialize(opt, paths_and_nodules, 'valid')
     print("dataset [%s] of size %d was created" %
           (type(instance).__name__, len(instance)))
     dataloader_val = torch.utils.data.DataLoader(
@@ -78,6 +83,6 @@ def create_dataloader_trainval(opt):
         batch_size=opt.batchSize,
         shuffle=False,
         num_workers=int(opt.num_workers),
-        drop_last=False
+        drop_last=True
     )
     return dataloader_train, dataloader_val

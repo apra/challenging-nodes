@@ -1,5 +1,6 @@
 import csv
 import os
+import random
 from pathlib import Path
 
 
@@ -78,6 +79,9 @@ def get_paths_and_nodules(image_dir, include_chexpert=True, include_mimic=True, 
         total_image_nodule_list += get_paths_and_nodules_helper(chex_image_dir, chex_or_mimic=True)
     if include_mimic:
         total_image_nodule_list += get_paths_and_nodules_helper(mimic_image_dir, chex_or_mimic=True)
+
+    # shuffle before selecting the fold, this should remain consistent as random seed is set at the beginning of train
+    random.shuffle(total_image_nodule_list)
 
     return total_image_nodule_list
 

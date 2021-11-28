@@ -38,13 +38,12 @@ class CustomTrainDataset(BaseDataset):
                             help='How many times node21 data is resampled')
         return parser
 
-    def initialize(self, opt, mod):
+    def initialize(self, opt, path_and_nodules, mod):
         self.opt = opt
         self.mod = mod
-        self.paths_and_nodules = get_paths_and_nodules(self.opt.train_image_dir, self.opt.include_chexpert,
-                                                       self.opt.include_mimic, self.opt.node21_resample_count)
-        size = len(self.paths_and_nodules)
-        self.full_dataset_size = size
+        self.paths_and_nodules = path_and_nodules
+
+        self.full_dataset_size = len(self.paths_and_nodules)
         self.fold_size = int(self.full_dataset_size / opt.num_folds)
         self.begin_fold_idx = opt.fold * self.fold_size
         if opt.fold == opt.num_folds - 1:
@@ -84,7 +83,7 @@ class CustomTrainDataset(BaseDataset):
 
     def __getitem__(self, index):
         # TODO make this process much faster, remove all useless checks
-        #input image (real images)
+        # input image (real images)
         image_path = ''
         index = self.get_true_index(index)
         try:
