@@ -51,6 +51,7 @@ def crop_around_mask_bbox(image: np.ndarray, mask_bbox, crop_size=256, seed=0, r
     # mask_bbox = mask_convention_setter(mask_bbox, invert=True)  # this guarantees the mask is [x,y,w,h]
 
     im_max_x, im_max_y = image.shape
+    print(f"Image shape: {image.shape}")
     mask_x, mask_y, mask_w, mask_h = mask_bbox
     if seed:
         np.random.seed(seed)
