@@ -51,7 +51,6 @@ def crop_around_mask_bbox(image: np.ndarray, mask_bbox, crop_size=256, seed=0, r
     # mask_bbox = mask_convention_setter(mask_bbox, invert=True)  # this guarantees the mask is [x,y,w,h]
 
     im_max_x, im_max_y = image.shape
-    print(f"Image shape: {image.shape}")
     mask_x, mask_y, mask_w, mask_h = mask_bbox
     if seed:
         np.random.seed(seed)
@@ -63,10 +62,12 @@ def crop_around_mask_bbox(image: np.ndarray, mask_bbox, crop_size=256, seed=0, r
 
     if crop_max_x<=0 or crop_max_y<=0 or crop_max_y<=crop_min_y or crop_max_x<=crop_min_x:
         print(f"The following is wrong: bbox: {mask_bbox}, image shape: {image.shape}")
-
-    crop_x = np.random.randint(crop_min_x, crop_max_x)
-    crop_y = np.random.randint(crop_min_y, crop_max_y)
-
+    try:
+        crop_x = np.random.randint(crop_min_x, crop_max_x)
+        crop_y = np.random.randint(crop_min_y, crop_max_y)
+    except ValueError:
+        print(f"The following is wrong: bbox: {mask_bbox}, image shape: {image.shape}")
+        raise Exception()
     cropped_image = crop_to_bbox(image, [crop_y, crop_x, crop_size, crop_size])
     new_mask = [mask_x - crop_x, mask_y - crop_y, mask_w, mask_h]
     new_mask = mask_convention_setter(new_mask)
