@@ -38,7 +38,7 @@ singularity exec --no-home --nv \
 $SINGULARITYIMAGE \
 $COMMAND &
 echo "$NAME command ran"
-NAME=full_datasets_48_2gpus_beta_l15_2
+NAME=full_datasets_2gpus_beta_l15_2
 
 COMMAND="python -u train.py --name $NAME --num_workers $NUM_WORKERS --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids 2,3 --beta_l1 1.5 $STANDARD_PARAMS"
 
