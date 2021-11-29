@@ -31,15 +31,15 @@ def create_random_bboxes(number_of_bboxes, seed=0):
     for i in range(number_of_bboxes):
         # distributions that match closely what is found in the data
         l_or_r = np.random.rand()  # x has this left and right factor because it occurs in lungs, not in between lungs
-        if l_or_r > 0.55:
-            x = min(930, np.random.normal(750, 75))
+        if l_or_r > 0.5:
+            x = min(930, np.random.normal(725, 80))
         else:
-            x = max(20, np.random.normal(200, 75))
+            x = max(20, np.random.normal(225, 80))
 
         y = (np.random.beta(2, 2) + (1 / 7)) * 700
         w = np.random.gamma(8, 7.5)
         h = np.random.gamma(7, 8.4)
-        bbox_list.append([x, y, w, h])
+        bbox_list.append([int(x), int(y), int(w), int(h)])
     return bbox_list
 
 
