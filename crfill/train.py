@@ -49,7 +49,6 @@ trainer.save('latest')
 for epoch in iter_counter.training_epochs():
     iter_counter.record_epoch_start(epoch)
     for i, data_i in enumerate(dataloader_train, start=iter_counter.epoch_iter):
-
         iter_counter.record_one_iteration()
 
         # train discriminator
@@ -66,7 +65,7 @@ for epoch in iter_counter.training_epochs():
             for k, v in losses.items():
                 ts_writer.add_scalar(f"train/{k}", v.mean().item(), iter_counter.total_steps_so_far)
             writer.write_console(epoch, iter_counter.epoch_iter, iter_counter.time_per_iter)
-            num_print = min(4, data_i['full_image'].size(0))
+            num_print = min(4, data_i['real_image'].size(0))
             # writer.add_single_image('inputs',
             #         (make_grid(data_i['full_image'][:num_print])+1)/2,
             #         iter_counter.total_steps_so_far)
@@ -74,7 +73,7 @@ for epoch in iter_counter.training_epochs():
             #                 draw_bounding_boxes(data_i['full_image'],data_i['bounding_box']),
             #                 iter_counter.total_steps_so_far)
             ts_writer.add_image('train/original_cropped',
-                               make_grid((data_i['image'][:num_print]+1)/2),
+                               make_grid((data_i['real_image'][:num_print]+1)/2),
                                iter_counter.total_steps_so_far)
 
             infer_out,inp = trainer.model.forward(data_i, mode='inference')
@@ -122,7 +121,7 @@ for epoch in iter_counter.training_epochs():
                     generated,_ = model(data_ii, mode='inference')
                     generated = generated.cpu()
                 generated = (generated+1)/2*255
-                gt = data_ii['image']
+                gt = data_ii['real_image']
                 bsize, c, h, w = gt.shape
                 gt = (gt+1)/2*255
                 mse = ((generated-gt)**2).sum(3).sum(2).sum(1)

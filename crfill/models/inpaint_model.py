@@ -139,10 +139,10 @@ class InpaintModel(torch.nn.Module):
         #     mask = data['mask']
         # move to GPU and change data types
         if self.use_gpu():
-            data['image'] = data['image'].cuda()
+            data['real_image'] = data['real_image'].cuda()
             data['inputs'] = data['inputs'].cuda()
 
-        return data['inputs'], data['image'], data['mask']
+        return data['inputs'], data['real_image'], data['mask']
 
     def g_image_loss(self, coarse_image, fake_image, composed_image, real_image, mask):
         G_losses = {}

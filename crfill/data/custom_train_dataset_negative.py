@@ -56,6 +56,8 @@ class CustomTrainDatasetNegative(BaseDataset):
 
         self.transform = basic_transform()
 
+        self.rng = np.random.default_rng(seed=opt.seed)
+
     def get_true_index(self, index):
         if self.mod == "train":
             if index < self.begin_fold_idx:
@@ -92,7 +94,7 @@ class CustomTrainDatasetNegative(BaseDataset):
                 image_mask_bbox)  # use this method to set conventions for mask bbox
 
             cropped_image, new_mask_bbox = crop_around_mask_bbox(full_image, image_mask_bbox,
-                                                                 crop_size=crop_size, seed=self.opt.seed)  # Crop around nodule
+                                                                 crop_size=crop_size, rng=self.rng)  # Crop around nodule
             cropped_image = np.array(normalize_cxr(cropped_image), dtype='float32')  # divide 4095
             _, mask_array = mask_image(cropped_image, new_mask_bbox)
 
@@ -101,15 +103,10 @@ class CustomTrainDatasetNegative(BaseDataset):
             mask_tensor = torch.Tensor(mask_array)
             image_tensor = self.transform(cropped_image)  # in this class we don't overlay a mask on the image
             input_dict = {
-                'bounding_box': image_mask_bbox,
-                'full_image': normalize_cxr(full_image),
-                # TODO: remove the ones above when training properly, it's not necessary.
-                'image': image_tensor.float(),  # TODO: remove either image or inputs -- in this class there is no difference between the two
                 'inputs': image_tensor.float(),
                 'mask': mask_tensor.float(),
-                'path': image_path,
             }
             return input_dict
         except FileNotFoundError:
-            print(f"skip {image_path}")
+            print(f"No image found at: {image_path}")
             return self.__getitem__((index + 1) % self.__len__())

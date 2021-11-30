@@ -45,6 +45,8 @@ class CustomTrainDataset(BaseDataset):
 
         self.full_dataset_size = len(self.paths_and_nodules)
         self.fold_size = int(self.full_dataset_size / opt.num_folds)
+        if self.full_dataset_size > 10000:
+            self.fold_size = 200
         self.begin_fold_idx = opt.fold * self.fold_size
         if opt.fold == opt.num_folds - 1:
             # this is the last fold, take all the remaining samples
@@ -59,6 +61,8 @@ class CustomTrainDataset(BaseDataset):
             self.dataset_size = self.fold_size
 
         self.transform = basic_transform()
+
+        self.rng = np.random.default_rng(seed=opt.seed)
 
     def get_true_index(self, index):
         if self.mod == "train":
@@ -92,11 +96,11 @@ class CustomTrainDataset(BaseDataset):
             full_image = self.mha_loader(image_path)
             crop_size = self.opt.crop_around_mask_size
 
-            image_mask_bbox = mask_convention_setter(
-                image_mask_bbox)  # use this method to set conventions for mask bbox
+            # Crop around nodule
             cropped_image, new_mask_bbox = crop_around_mask_bbox(full_image, image_mask_bbox,
-                                                                 crop_size=crop_size, seed=self.opt.seed)  # Crop around nodule
-            cropped_image = np.array(normalize_cxr(cropped_image), dtype='float32')  # divide 4095
+                                                                 crop_size=crop_size,
+                                                                 rng=self.rng)
+            cropped_image = normalize_cxr(cropped_image)  # divide 4095
             cropped_masked_image, mask_array = mask_image(cropped_image, new_mask_bbox)
 
             # params = get_params(self.opt, cropped_image.shape)
@@ -105,15 +109,11 @@ class CustomTrainDataset(BaseDataset):
             image_tensor = self.transform(cropped_image)
             masked_image_tensor = self.transform(cropped_masked_image)
             input_dict = {
-                'bounding_box': image_mask_bbox,
-                'full_image': normalize_cxr(full_image),
-                # TODO: remove the ones above when training properly, it's not necessary.
-                'image': image_tensor.float(),
+                'real_image': image_tensor.float(),
                 'inputs': masked_image_tensor.float(),
-                'mask': mask_tensor.float(),
-                'path': image_path,
+                'mask': mask_tensor.float()
             }
             return input_dict
         except FileNotFoundError:
-            print(f"skip {image_path}")
+            print(f"No image found at: {image_path}")
             return self.__getitem__((index + 1) % self.__len__())

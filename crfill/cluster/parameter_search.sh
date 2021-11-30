@@ -32,11 +32,11 @@ LOGGING_DIR="$HOME/challenging-nodes/crfill/checkpoints"
 mkdir -p "$DATA"
 cp -ra $HOME/data/data_node21/. "$DATA"
 
-NAME="test_parametersearch_full_dataset_2gpus_beta_l$BETAL1_1-lambda_feat05"
+NAME="test_parametersearch_full_dataset_2gpus_beta_l$BETAL1_1-lambda_feat$LAMBDA_1"
 
-STANDARD_PARAMS="--seed 0 --batchSize 40 --include_chexpert --include_mimic --node21_resample_count 10 --dataset_mode_train custom_train --dataset_mode custom_train --train_image_dir /data --netG twostagend --netD deepfill --preprocess_mode none --validation_freq 20000 --niter 600 --display_freq 2000 --model arrange"
+STANDARD_PARAMS="--seed 0 --batchSize 40 --niter_decay 60 --include_chexpert --include_mimic --node21_resample_count 10 --dataset_mode_train custom_train --dataset_mode custom_train --train_image_dir /data --netG twostagend --netD deepfill --preprocess_mode none --validation_freq 20000 --niter 600 --display_freq 2000 --model arrange"
 
-COMMAND="python -u train.py --name $NAME --num_workers $NUM_WORKERS --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids 0,1 --beta_l1 $BETAL1_1 --lambda_feat 0.5 $STANDARD_PARAMS"
+COMMAND="python -u train.py --name $NAME --num_workers $NUM_WORKERS --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids 0,1 --beta_l1 $BETAL1_1 --lambda_feat $LAMBDA_1 $STANDARD_PARAMS"
 
 echo "Running $NAME"
 singularity exec --no-home --nv \
@@ -48,9 +48,9 @@ singularity exec --no-home --nv \
 $SINGULARITYIMAGE \
 $COMMAND &
 echo "$NAME command ran"
-NAME="test_parametersearch_full_dataset_2gpus_beta_l$BETAL1_2-lambda_feat05"
+NAME="test_parametersearch_full_dataset_2gpus_beta_l$BETAL1_2-lambda_feat$LAMBDA_2"
 
-COMMAND="python -u train.py --name $NAME --num_workers $NUM_WORKERS --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids 2,3 --beta_l1 $BETAL1_2 $STANDARD_PARAMS"
+COMMAND="python -u train.py --name $NAME --num_workers $NUM_WORKERS --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids 2,3 --beta_l1 $BETAL1_2 --lambda_feat $LAMBDA_2 $STANDARD_PARAMS"
 
 echo "Running $NAME"
 singularity exec --no-home --nv \

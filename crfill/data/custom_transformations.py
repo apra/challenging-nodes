@@ -43,7 +43,7 @@ def create_random_bboxes(number_of_bboxes, seed=0):
     return bbox_list
 
 
-def crop_around_mask_bbox(image: np.ndarray, mask_bbox, crop_size=256, seed=0, return_new_mask_bbox=True):
+def crop_around_mask_bbox(image: np.ndarray, mask_bbox, crop_size=256, rng=None, return_new_mask_bbox=True):
     """create random bbox of crop_size**2 that includes mask region and stays within image"""
     if len(image.shape) != 2:
         raise ValueError('Image to be cropped is not of shape (x,y) -- input only single channel image')
@@ -52,8 +52,8 @@ def crop_around_mask_bbox(image: np.ndarray, mask_bbox, crop_size=256, seed=0, r
 
     im_max_x, im_max_y = image.shape
     mask_x, mask_y, mask_w, mask_h = mask_bbox
-    if seed:
-        np.random.seed(seed)
+    if rng is None:
+        rng = np.random.default_rng(seed=0)
 
     crop_min_x = max(mask_x + mask_w - crop_size + 1, 0)
     crop_max_x = min(mask_x , im_max_x - crop_size - 1)
@@ -63,12 +63,12 @@ def crop_around_mask_bbox(image: np.ndarray, mask_bbox, crop_size=256, seed=0, r
     if crop_min_y == crop_max_y:
         crop_y = crop_min_y
     else:
-        crop_y = np.random.randint(crop_min_y, crop_max_y)
+        crop_y = rng.integers(crop_min_y, crop_max_y)
 
     if crop_max_x == crop_max_x:
         crop_x = crop_min_x
     else:
-        crop_x = np.random.randint(crop_min_x, crop_max_x)
+        crop_x = rng.integers(crop_min_x, crop_max_x)
 
     cropped_image = crop_to_bbox(image, [crop_y, crop_x, crop_size, crop_size])
     new_mask = [mask_x - crop_x, mask_y - crop_y, mask_w, mask_h]
