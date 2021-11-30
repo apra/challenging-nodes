@@ -83,9 +83,11 @@ def get_paths_and_nodules(image_dir, include_chexpert=True, include_mimic=True, 
     mimic_image_dir = os.path.join(Path(image_dir), Path('mimic'))
 
     total_image_nodule_list += get_paths_and_nodules_helper(node21_image_dir, chex_or_mimic=False)
-
-    for resample in range(resample_count_node21):  # resample node21
-        total_image_nodule_list += total_image_nodule_list
+    if resample_count_node21 > 0:
+        final_list = total_image_nodule_list.copy()
+        for resample in range(resample_count_node21-1):  # resample node21
+            final_list += total_image_nodule_list
+        total_image_nodule_list = final_list
 
     if include_chexpert:
         total_image_nodule_list += get_paths_and_nodules_helper(chex_image_dir, chex_or_mimic=True)
