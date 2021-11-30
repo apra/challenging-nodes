@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -t 11:00:00
+#SBATCH -t 15:00:00
 #SBATCH --mail-type=END
 #SBATCH --mail-user=samuele.papa@gmail.com
 #SBATCH -p gpu_titanrtx
@@ -32,9 +32,9 @@ LOGGING_DIR="$HOME/challenging-nodes/crfill/checkpoints"
 mkdir -p "$DATA"
 cp -ra $HOME/data/data_node21/. "$DATA"
 
-NAME="test_parametersearch_full_dataset_2gpus_beta_l$BETAL1_1-lambda_feat$LAMBDA_1"
+NAME="full_dataset_2gpus_beta_l$BETAL1_1-lambda_feat$LAMBDA_1"
 
-STANDARD_PARAMS="--seed 0 --batchSize 40 --niter_decay 60 --include_chexpert --include_mimic --node21_resample_count 10 --dataset_mode_train custom_train --dataset_mode custom_train --train_image_dir /data --netG twostagend --netD deepfill --preprocess_mode none --validation_freq 20000 --niter 600 --display_freq 2000 --model arrange"
+STANDARD_PARAMS="--seed 0 --batchSize 40 --niter_decay 8 --include_chexpert --include_mimic --node21_resample_count 10 --dataset_mode_train custom_train --dataset_mode custom_train --train_image_dir /data --netG twostagend --netD deepfill --preprocess_mode none --validation_freq 20000 --niter 43 --display_freq 5000 --model arrange"
 
 COMMAND="python -u train.py --name $NAME --num_workers $NUM_WORKERS --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids 0,1 --beta_l1 $BETAL1_1 --lambda_feat $LAMBDA_1 $STANDARD_PARAMS"
 
@@ -48,7 +48,7 @@ singularity exec --no-home --nv \
 $SINGULARITYIMAGE \
 $COMMAND &
 echo "$NAME command ran"
-NAME="test_parametersearch_full_dataset_2gpus_beta_l$BETAL1_2-lambda_feat$LAMBDA_2"
+NAME="full_dataset_2gpus_beta_l$BETAL1_2-lambda_feat$LAMBDA_2"
 
 COMMAND="python -u train.py --name $NAME --num_workers $NUM_WORKERS --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids 2,3 --beta_l1 $BETAL1_2 --lambda_feat $LAMBDA_2 $STANDARD_PARAMS"
 
