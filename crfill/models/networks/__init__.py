@@ -2,8 +2,11 @@
 Copyright (C) 2019 NVIDIA Corporation.  All rights reserved.
 Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 """
+import warnings
 
 import torch
+
+import models.networks.inpaint_d
 from models.networks.base_network import BaseNetwork
 from models.networks.loss import *
 from models.networks.discriminator import *
@@ -45,6 +48,17 @@ def create_network(cls, opt):
     return net
 
 
+def create_network_rcnn(cls, opt):
+    """Separate function for rcnn, which always loads weights first, no init."""
+    net = cls(opt)
+    net.print_network()
+    util.load_network_path(net, opt.fastercnn_loc)
+    if len(opt.gpu_ids) > 0:
+        assert(torch.cuda.is_available())
+        net.cuda()
+    return net
+
+
 def define_G(opt):
     netG_cls = find_network_using_name(opt.netG, 'generator')
     return create_network(netG_cls, opt)
@@ -53,3 +67,8 @@ def define_G(opt):
 def define_D(opt):
     netD_cls = find_network_using_name(opt.netD, 'discriminator')
     return create_network(netD_cls, opt)
+
+
+def define_DRCNN(opt):
+    netDRCNN_cls = find_network_using_name('fasterrcnn', 'discriminator')
+    return create_network_rcnn(netDRCNN_cls, opt)

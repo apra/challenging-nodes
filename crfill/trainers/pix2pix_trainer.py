@@ -20,8 +20,8 @@ class Pix2PixTrainer():
 
     def __init__(self, opt):
         self.opt = opt
-        # self.models = models.create_model(opt)
-        self.model = models.arrange_model.ArrangeModel(opt=opt)
+        self.model = models.create_model(opt)
+        #self.model = models.arrange_model.ArrangeModel(opt=opt)
         if len(opt.gpu_ids) > 0:
             self.model = DataParallelWithCallback(self.model,
                                                   device_ids=opt.gpu_ids)
