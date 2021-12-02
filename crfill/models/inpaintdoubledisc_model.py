@@ -157,7 +157,7 @@ class InpaintdoublediscModel(torch.nn.Module):
 
         # Faster RCNN loss -- For aux loss, composed_full_image and full_image_bbox will be passed as None
         if composed_full_image is not None:
-            rcnn_losses = self.discriminate_RCNN(composed_full_image, full_image_bbox)
+            rcnn_losses = self.RCNN_loss(composed_full_image, full_image_bbox)
             G_losses['RCNN'] = rcnn_losses
             #G_losses['RCNN'] = self.criterionGAN(pred_rcnn, True, for_discriminator=False)
 
@@ -249,13 +249,18 @@ class InpaintdoublediscModel(torch.nn.Module):
 
         return pred_fake, pred_real
 
-    def discriminate_RCNN(self, composed_image, ground_truth_bbox):
+    def RCNN_loss(self, composed_image, ground_truth_bbox):
         targets = [{'boxes': torch.unsqueeze(bbox, 0),
                     'labels': torch.LongTensor([1]).cuda()} for bbox in ground_truth_bbox]  # label=1 for tumor class
-        discriminator_out = self.netDRCNN(composed_image, targets)
-        relevant_loss = discriminator_out['loss_objectness']
-        # TODO: think about what loss is the correct one to return
-        return relevant_loss
+        loss_dict = self.netDRCNN(composed_image, targets)
+
+        _loss_sum = 0
+        count = 0
+        for key in loss_dict:
+            count += 1
+            _loss_sum += loss_dict[key]
+        # TODO: think about what (sum of) loss is the correct one to return
+        return _loss_sum
 
     # Take the prediction of fake and real images from the combined batch
     def divide_pred(self, pred):

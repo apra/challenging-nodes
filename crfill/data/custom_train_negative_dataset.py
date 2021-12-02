@@ -40,7 +40,7 @@ class CustomTrainNegativeDataset(BaseDataset):
         size = len(self.paths)
         self.full_dataset_size = size
         # TODO: check whether below the right amount of bboxes are created -- in combination with the k-fold
-        self.bboxes = create_random_bboxes(number_of_bboxes=self.full_dataset_size)  # TODO make reproducible RNG here
+        self.bboxes = create_random_bboxes(number_of_bboxes=self.full_dataset_size, max_x=opt.load_size, max_y=opt.load_size)  # TODO make reproducible RNG here
         self.fold_size = int(self.full_dataset_size / opt.num_folds)
         self.begin_fold_idx = opt.fold * self.fold_size
         if opt.fold == opt.num_folds - 1:
@@ -100,12 +100,9 @@ class CustomTrainNegativeDataset(BaseDataset):
             cropped_image = np.array(normalize_cxr(cropped_image), dtype='float32')  # divide 4095
             _, mask_array = mask_image(cropped_image, new_mask_bbox)
 
-            # params = get_params(self.opt, cropped_image.shape)
             crop_bbox = [image_mask_bbox[0] - new_mask_bbox[0], image_mask_bbox[1] - new_mask_bbox[1], crop_size, crop_size]
-            #_, full_image_mask = mask_image(full_image, crop_bbox)
 
             mask_tensor = torch.Tensor(mask_array)
-            #full_image_mask_tensor = torch.Tensor(full_image_mask)
             full_image_crop_bbox = torch.Tensor(crop_bbox)
             full_image_bbox = torch.Tensor([image_mask_bbox[0], image_mask_bbox[1], image_mask_bbox[0]+image_mask_bbox[2], image_mask_bbox[1]+image_mask_bbox[3]])
             full_image_tensor = torch.unsqueeze(torch.Tensor(full_image), 0)  # don't self.transform this -- rcnn does its own normalization

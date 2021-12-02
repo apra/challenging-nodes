@@ -16,6 +16,7 @@ class ArrangedoublediscModel(InpaintdoublediscModel):
     def __init__(self, opt):
         super().__init__(opt)
         _, self.netD_aux, _ = self.initialize_networks(opt)
+
         if opt.continue_train:
             self.netD_aux = util.load_network(self.netD_aux, 'D_aux', opt.which_epoch, opt)
         if opt.load_base_g is not None:
@@ -39,6 +40,7 @@ class ArrangedoublediscModel(InpaintdoublediscModel):
         if opt.isTrain:
             D_params = list(self.netD.parameters()) + \
                     list(self.netD_aux.parameters())
+            DRCNN_params = self.netDRCNN.parameters()
 
         beta1, beta2 = opt.beta1, opt.beta2
         if opt.no_TTUR:
@@ -48,8 +50,9 @@ class ArrangedoublediscModel(InpaintdoublediscModel):
 
         optimizer_G = torch.optim.Adam(G_params, lr=G_lr, betas=(beta1, beta2))
         optimizer_D = torch.optim.Adam(D_params, lr=D_lr, betas=(beta1, beta2))
+        optimizer_DRCNN = torch.optim.Adam(DRCNN_params, lr=0)
 
-        return optimizer_G, optimizer_D
+        return optimizer_G, optimizer_D, optimizer_DRCNN
 
     def forward(self, data, mode):
         inputs, real_image, mask, full_image, full_image_crop_bbox, full_image_bbox = self.preprocess_input(data)
@@ -75,6 +78,7 @@ class ArrangedoublediscModel(InpaintdoublediscModel):
             return composed_image, inputs
         else:
             raise ValueError("|mode| is invalid")
+
 
     def generate_fake(self, inputs, real_image, mask):
         coarse_image, fake_image, aux_image, recon_aux = self.netG(inputs, mask)
@@ -129,7 +133,13 @@ class ArrangedoublediscModel(InpaintdoublediscModel):
         composed_full_image = full_image
         for i in range(len(full_image_crop_bbox)):
             c_x1, c_y1, c_w, c_h = full_image_crop_bbox[i].int()
-            composed_full_image[i, :, c_y1:c_y1+c_h, c_x1:c_x1+c_w] = composed_image[i]
+            try:
+                composed_full_image[i, :, c_y1:c_y1+c_h, c_x1:c_x1+c_w] = composed_image[i]
+            except RuntimeError:
+                print(composed_image[i])
+                print(composed_full_image[i])
+                print(composed_image[i].shape)
+                print(composed_full_image[i].shape)
 
         # large_test = composed_full_image[0].cpu().detach().numpy().reshape((1024,1024))
         # large_test = (large_test * 0.5 + 0.5) * 255

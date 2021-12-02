@@ -12,7 +12,7 @@ from trainers import create_trainer
 from torch.utils import tensorboard
 #from torch.utils.tensorboard import SummaryWriter
 from util.util import set_all_seeds
-from trainers.pix2pix_trainer import Pix2PixTrainer
+from trainers.pix2pixdoubledisc_trainer import Pix2PixDoubleDiscTrainer
 
 from torchvision import datasets, transforms
 from util.plot_util import draw_bounding_boxes
@@ -31,7 +31,7 @@ dataloader_train, dataloader_val = data.create_dataloader_trainval(opt)
 
 # create trainer for our model
 # trainer = create_trainer(opt)
-trainer = Pix2PixTrainer(opt)
+trainer = Pix2PixDoubleDiscTrainer(opt)
 model = trainer.model
 
 # create tool for counting iterations
