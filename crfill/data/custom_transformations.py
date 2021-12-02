@@ -25,8 +25,7 @@ def mask_convention_setter(mask, invert=False):
 
 
 def create_random_bboxes(number_of_bboxes, seed=0):
-    if seed:
-        np.random.seed(seed)
+    # TODO: make reproducible rng
     bbox_list = []
     for i in range(number_of_bboxes):
         # distributions that match closely what is found in the data

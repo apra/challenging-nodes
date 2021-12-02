@@ -204,16 +204,23 @@ def save_network(net, label, epoch, opt):
     if len(opt.gpu_ids) and torch.cuda.is_available():
         net.cuda()
 
-def load_network_path(net, save_path):
+def load_network_path(net, save_path, strict=False, rcnn_load=False):
     weights = torch.load(save_path)
     new_dict = {}
-    for k,v in weights.items():
-        #if k.startswith("module.conv16") or k.startswith("module.conv17"):
-        #    continue
-        if k.startswith("module."):
-            k=k.replace("module.","")
-        new_dict[k] = v
-    net.load_state_dict(new_dict, strict=False)
+    if rcnn_load:
+        for k, v in weights.items():
+            # if k.startswith("module.conv16") or k.startswith("module.conv17"):
+            #    continue
+            k = "fastercnn_model." + k
+            new_dict[k] = v
+    else:
+        for k,v in weights.items():
+            #if k.startswith("module.conv16") or k.startswith("module.conv17"):
+            #    continue
+            if k.startswith("module."):
+                k=k.replace("module.","")
+            new_dict[k] = v
+    net.load_state_dict(new_dict, strict=strict)
     #net.load_state_dict(new_dict)
     return net
 

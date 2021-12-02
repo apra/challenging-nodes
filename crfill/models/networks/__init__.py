@@ -52,7 +52,7 @@ def create_network_rcnn(cls, opt):
     """Separate function for rcnn, which always loads weights first, no init."""
     net = cls(opt)
     net.print_network()
-    util.load_network_path(net, opt.fastercnn_loc)
+    util.load_network_path(net, opt.fastercnn_loc, strict=True, rcnn_load=True)
     if len(opt.gpu_ids) > 0:
         assert(torch.cuda.is_available())
         net.cuda()

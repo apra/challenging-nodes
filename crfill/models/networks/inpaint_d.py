@@ -47,9 +47,9 @@ class FasterRCNNDiscriminator(BaseNetwork):
         in_features = self.fastercnn_model.roi_heads.box_predictor.cls_score.in_features
         self.fastercnn_model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
 
-    def forward(self, x):
-        # TODO: get the correct bbox here, such that it can forward correctly through the model
-        return x
+    def forward(self, images, targets):
+        output = self.fastercnn_model(images, targets)
+        return output
 
 
 if __name__ == "__main__":

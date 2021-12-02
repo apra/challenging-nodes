@@ -58,8 +58,6 @@ class InpaintdoublediscModel(torch.nn.Module):
     # routines based on |mode|.
     def forward(self, data, mode):
         inputs, real_image, mask = self.preprocess_input(data)
-        # TODO: here we should extract the bbox on the full image as well, which will be used in RCNN
-        # TODO: here we should obtain the full_image as well, for the rcnn
 
         if mode == 'generator':
             g_loss, coarse_image, composed_image = self.compute_generator_loss(
@@ -117,8 +115,7 @@ class InpaintdoublediscModel(torch.nn.Module):
             netG = util.load_network(netG, 'G', opt.which_epoch, opt)
             if opt.isTrain:
                 netD = util.load_network(netD, 'D', opt.which_epoch, opt)
-                warnings.warn('Loading DRCNN for continuing training not implemented yet')
-                # TODO: load DRCNN here?
+                raise NotImplementedError('Loading DRCNN for continuing training not implemented yet')
         return netG, netD, netDRCNN
 
     # preprocess the input, such as moving the tensors to GPUs and
@@ -126,6 +123,7 @@ class InpaintdoublediscModel(torch.nn.Module):
     # |data|: dictionary of the input data
 
     def preprocess_input(self, data):
+        # TODO change infrastructure such that we can obtain positive images for the discriminator and negative for generator
         # b,c,h,w = data['image'].shape
         # if self.opt.isTrain:
         #     # generate random stroke mask
@@ -147,21 +145,21 @@ class InpaintdoublediscModel(torch.nn.Module):
         #         data['mask'] = data['mask'].cuda()
         #     mask = data['mask']
         # move to GPU and change data types
-        if self.use_gpu():
-            data['real_image'] = data['real_image'].cuda()
+        if self.use_gpu():  # this command is irrelevant, all data will already be at the GPU due to DataParallel in pix2pixtrainer
             data['inputs'] = data['inputs'].cuda()
 
-        return data['inputs'], data['real_image'], data['mask']
+        data['real_image'] = data['inputs']  # TODO: remove/adjust -- is for debugging purposes only
 
-    def g_image_loss(self, coarse_image, fake_image, composed_image, real_image, mask):
+        return data['inputs'], data['real_image'], data['mask'], data['full_image'], data['full_image_crop_bbox'], data['full_image_bbox']
+
+    def g_image_loss(self, coarse_image, fake_image, composed_image, real_image, mask, composed_full_image, full_image_bbox):
         G_losses = {}
 
-        # TODO: make sure we obtain the correct bbox here from the forward
-        # TODO: make sure we get the complete image -- not just the crop
-        # Faster RCNN loss
-        true_bbox = [0, 0, 0, 0]  # just for testing purposes
-        pred_rcnn = self.discriminate_RCNN(composed_image, true_bbox)
-        G_losses['RCNN'] = self.criterionGAN(pred_rcnn, True, for_discriminator=False)
+        # Faster RCNN loss -- For aux loss, composed_full_image and full_image_bbox will be passed as None
+        if composed_full_image is not None:
+            rcnn_losses = self.discriminate_RCNN(composed_full_image, full_image_bbox)
+            G_losses['RCNN'] = rcnn_losses
+            #G_losses['RCNN'] = self.criterionGAN(pred_rcnn, True, for_discriminator=False)
 
         # 'Normal' Adversarial
         if not self.opt.no_gan_loss and not self.opt.no_fine_loss:
@@ -201,7 +199,6 @@ class InpaintdoublediscModel(torch.nn.Module):
             inputs, real_image, mask)
 
         composed_image = fake_image * mask + inputs * (1 - mask)
-        # TODO perhaps create composed_full where we overlay the fake_image on the full image and pass it for the rcnn
         G_losses = self.g_image_loss(coarse_image, fake_image, composed_image, real_image, mask)
 
         return G_losses, coarse_image, composed_image
@@ -253,10 +250,12 @@ class InpaintdoublediscModel(torch.nn.Module):
         return pred_fake, pred_real
 
     def discriminate_RCNN(self, composed_image, ground_truth_bbox):
-        discriminator_out = self.netDRCNN(composed_image, ground_truth_bbox)
-        # TODO: make sure the rcnn output is again a real or fake here
-        # TODO: create the actual loss - that converts the rcnn output (boxes + scores) to a real or fake
-        return discriminator_out
+        targets = [{'boxes': torch.unsqueeze(bbox, 0),
+                    'labels': torch.LongTensor([1]).cuda()} for bbox in ground_truth_bbox]  # label=1 for tumor class
+        discriminator_out = self.netDRCNN(composed_image, targets)
+        relevant_loss = discriminator_out['loss_objectness']
+        # TODO: think about what loss is the correct one to return
+        return relevant_loss
 
     # Take the prediction of fake and real images from the combined batch
     def divide_pred(self, pred):

@@ -6,7 +6,7 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 import importlib
 import torch.utils.data
 from data.base_dataset import BaseDataset
-from util.metadata_utils import get_paths_and_nodules
+from util.metadata_utils import get_paths_and_nodules, get_paths_negatives
 
 
 def find_dataset_using_name(dataset_name):
@@ -58,10 +58,16 @@ def create_dataloader(opt):
 def create_dataloader_trainval(opt):
     assert opt.isTrain
     # get the path to images and the nodules locations, these are already shuffled
-    paths_and_nodules = get_paths_and_nodules(opt.train_image_dir, opt.include_chexpert,
+    if opt.model == 'arrange':
+        paths_and_nodules = get_paths_and_nodules(opt.train_image_dir, opt.include_chexpert,
                                               opt.include_mimic, opt.node21_resample_count)
+    elif opt.model == 'arrangedoubledisc':
+        paths_and_nodules = get_paths_negatives(opt.train_image_dir)
+    else:
+        raise ValueError(f'Unrecognized model name: {opt.model}')
     dataset = find_dataset_using_name(opt.dataset_mode_train)
     instance = dataset()
+    print(dataset)
     instance.initialize(opt, paths_and_nodules, 'train')
     print("dataset [%s] of size %d was created" %
           (type(instance).__name__, len(instance)))

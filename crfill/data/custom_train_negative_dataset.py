@@ -13,7 +13,7 @@ from data.custom_transformations import mask_image, crop_around_mask_bbox, norma
 from util.metadata_utils import get_paths_negatives
 
 
-class CustomTrainDatasetNegative(BaseDataset):
+class CustomTrainNegativeDataset(BaseDataset):
     """Custom dataset class for negative xrays -- no nodules. Expects that within the main datafolder there exists a folder
        'negative', that contains negative images in any subdirectory structure. If metadata.csv exists in 'negative' it will read it,
        otherwise it will be created as well."""
@@ -32,14 +32,15 @@ class CustomTrainDatasetNegative(BaseDataset):
                             help='number of folds for the validation')
         return parser
 
-    def initialize(self, opt, mod):
+    def initialize(self, opt, paths, mod):
         self.opt = opt
         self.mod = mod
-        self.paths = get_paths_negatives(self.opt.train_image_dir)
+        #self.paths = get_paths_negatives(self.opt.train_image_dir)
+        self.paths = paths
         size = len(self.paths)
         self.full_dataset_size = size
         # TODO: check whether below the right amount of bboxes are created -- in combination with the k-fold
-        self.bboxes = create_random_bboxes(number_of_bboxes=self.full_dataset_size, seed=self.opt.seed)
+        self.bboxes = create_random_bboxes(number_of_bboxes=self.full_dataset_size)  # TODO make reproducible RNG here
         self.fold_size = int(self.full_dataset_size / opt.num_folds)
         self.begin_fold_idx = opt.fold * self.fold_size
         if opt.fold == opt.num_folds - 1:
@@ -95,14 +96,25 @@ class CustomTrainDatasetNegative(BaseDataset):
 
             cropped_image, new_mask_bbox = crop_around_mask_bbox(full_image, image_mask_bbox,
                                                                  crop_size=crop_size, rng=self.rng)  # Crop around nodule
+            full_image = np.array(normalize_cxr(full_image), dtype='float32')
             cropped_image = np.array(normalize_cxr(cropped_image), dtype='float32')  # divide 4095
             _, mask_array = mask_image(cropped_image, new_mask_bbox)
 
             # params = get_params(self.opt, cropped_image.shape)
+            crop_bbox = [image_mask_bbox[0] - new_mask_bbox[0], image_mask_bbox[1] - new_mask_bbox[1], crop_size, crop_size]
+            #_, full_image_mask = mask_image(full_image, crop_bbox)
 
             mask_tensor = torch.Tensor(mask_array)
+            #full_image_mask_tensor = torch.Tensor(full_image_mask)
+            full_image_crop_bbox = torch.Tensor(crop_bbox)
+            full_image_bbox = torch.Tensor([image_mask_bbox[0], image_mask_bbox[1], image_mask_bbox[0]+image_mask_bbox[2], image_mask_bbox[1]+image_mask_bbox[3]])
+            full_image_tensor = torch.unsqueeze(torch.Tensor(full_image), 0)  # don't self.transform this -- rcnn does its own normalization
             image_tensor = self.transform(cropped_image)  # in this class we don't overlay a mask on the image
             input_dict = {
+                'full_image_bbox': full_image_bbox.float(),  # needed for faster rcnn
+                #'full_image_mask_tensor': full_image_mask_tensor.float(),
+                'full_image_crop_bbox': full_image_crop_bbox.float(),  # for overlaying the generated result later on
+                'full_image': full_image_tensor.float(),  # needed for faster rcnn
                 'inputs': image_tensor.float(),
                 'mask': mask_tensor.float(),
             }

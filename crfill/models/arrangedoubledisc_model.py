@@ -3,6 +3,7 @@ import torch
 from models.inpaintdoubledisc_model import InpaintdoublediscModel
 import util.util as util
 
+
 class ArrangedoublediscModel(InpaintdoublediscModel):
     @staticmethod
     def modify_commandline_options(parser, is_train):
@@ -51,11 +52,11 @@ class ArrangedoublediscModel(InpaintdoublediscModel):
         return optimizer_G, optimizer_D
 
     def forward(self, data, mode):
-        inputs, real_image, mask = self.preprocess_input(data)
+        inputs, real_image, mask, full_image, full_image_crop_bbox, full_image_bbox = self.preprocess_input(data)
 
         if mode == 'generator':
             g_loss, composed_image, composed_image_aux, recon_aux =\
-                    self.compute_generator_loss(inputs, real_image, mask)
+                    self.compute_generator_loss(inputs, real_image, mask, full_image, full_image_crop_bbox, full_image_bbox)
             generated = {
                     'composed': composed_image,
                     'composed_aux': composed_image_aux,
@@ -112,7 +113,7 @@ class ArrangedoublediscModel(InpaintdoublediscModel):
 
         return D_losses
 
-    def compute_generator_loss(self, inputs, real_image, mask):
+    def compute_generator_loss(self, inputs, real_image, mask, full_image, full_image_crop_bbox, full_image_bbox):
         # if not self.opt.no_ganFeat_loss:
         #     raise NotImplementedError
         if self.opt.vgg_loss:
@@ -120,12 +121,26 @@ class ArrangedoublediscModel(InpaintdoublediscModel):
         coarse_image, fake_image, aux_image, recon_aux = self.generate_fake(
                 inputs, real_image, mask)
         composed_image = fake_image*mask + inputs*(1-mask)
-        G_losses = self.g_image_loss(coarse_image, fake_image, composed_image, real_image, mask)
+
+        # small_test = composed_image[0].cpu().detach().numpy().reshape((256,256))
+        # small_test = (small_test*0.5 + 0.5) * 255
+        # Image.fromarray(small_test).convert("L").save("small.jpeg")
+
+        composed_full_image = full_image
+        for i in range(len(full_image_crop_bbox)):
+            c_x1, c_y1, c_w, c_h = full_image_crop_bbox[i].int()
+            composed_full_image[i, :, c_y1:c_y1+c_h, c_x1:c_x1+c_w] = composed_image[i]
+
+        # large_test = composed_full_image[0].cpu().detach().numpy().reshape((1024,1024))
+        # large_test = (large_test * 0.5 + 0.5) * 255
+        # Image.fromarray(large_test).convert("L").save("large.jpeg")
+
+        G_losses = self.g_image_loss(coarse_image, fake_image, composed_image, real_image, mask, composed_full_image, full_image_bbox)
 
         composed_image_aux = aux_image*mask + inputs*(1-mask)
         _netD = self.netD
         self.netD = self.netD_aux
-        G_losses_aux = self.g_image_loss(None, aux_image, composed_image_aux, real_image, mask)
+        G_losses_aux = self.g_image_loss(None, aux_image, composed_image_aux, real_image, mask, None, None)
         self.netD = _netD
         for k,v in G_losses_aux.items():
             G_losses[k+"_aux"] = v*self.opt.lambda_ref
