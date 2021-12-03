@@ -59,8 +59,6 @@ def crop_around_mask_bbox(image: np.ndarray, mask_bbox, crop_size=256, rng=None,
     crop_min_y = max(mask_y + mask_h - crop_size, 0)
     crop_max_y = min(mask_y, im_max_y - crop_size)
 
-    assert crop_min_x < crop_max_x, f"bbox inputted {mask_bbox}, with min {crop_min_x} and max {crop_max_x}"
-
     if crop_min_y == crop_max_y:
         crop_y = crop_min_y
     else:
@@ -75,8 +73,8 @@ def crop_around_mask_bbox(image: np.ndarray, mask_bbox, crop_size=256, rng=None,
     new_mask = [mask_x - crop_x, mask_y - crop_y, mask_w, mask_h]
     new_mask = mask_convention_setter(new_mask)
 
-    assert crop_x + crop_size < im_max_x, f"Crop_x is {crop_x}, such that we find max x of {crop_x + crop_size}, bbox: {mask_bbox}"
-    assert crop_y + crop_size < im_max_y, f"Crop_y is {crop_y}, such that we find max x of {crop_y + crop_size}"
+    assert crop_x + crop_size <= im_max_x, f"Crop_x is {crop_x}, such that we find max x of {crop_x + crop_size}, bbox: {mask_bbox}"
+    assert crop_y + crop_size <= im_max_y, f"Crop_y is {crop_y}, such that we find max x of {crop_y + crop_size}"
 
     if return_new_mask_bbox:
         return cropped_image, new_mask

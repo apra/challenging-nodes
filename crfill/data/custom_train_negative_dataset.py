@@ -35,7 +35,6 @@ class CustomTrainNegativeDataset(BaseDataset):
     def initialize(self, opt, paths, mod):
         self.opt = opt
         self.mod = mod
-        #self.paths = get_paths_negatives(self.opt.train_image_dir)
         self.paths = paths
         size = len(self.paths)
         self.full_dataset_size = size
