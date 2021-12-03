@@ -24,20 +24,22 @@ def mask_convention_setter(mask, invert=False):
         return mask
 
 
-def create_random_bboxes(number_of_bboxes, seed=0, max_x=1024, max_y=1024):
+def create_random_bboxes(number_of_bboxes, seed=0, max_x=1024, max_y=1024, rng=None):
     # TODO: make reproducible rng
+    if rng is None:
+        rng = np.random.default_rng()
     bbox_list = []
     for i in range(number_of_bboxes):
         # distributions that match closely what is found in the data
-        l_or_r = np.random.rand()  # x has this left and right factor because it occurs in lungs, not in between lungs
+        l_or_r = rng.random()  # x has this left and right factor because it occurs in lungs, not in between lungs
         if l_or_r > 0.5:  # right lung
-            x = min(930, max(np.random.normal(725, 80), 530))
+            x = min(930, max(rng.normal(725, 80), 530))
         else:  # left lung
-            x = max(20, min(np.random.normal(225, 80), 450))
+            x = max(20, min(rng.normal(225, 80), 450))
 
-        y = (np.random.beta(2, 2) + (1 / 7)) * 700  # is bounded [100, 800]
-        w = min(np.random.gamma(8, 7.5), max_x - x, 230)  # 230 is the max of the simulated_metadata, which we will have to predict on
-        h = min(np.random.gamma(7, 8.4), max_y - y, 230)
+        y = (rng.beta(2, 2) + (1 / 7)) * 700  # is bounded [100, 800]
+        w = min(rng.gamma(8, 7.5), max_x - x, 230)  # 230 is the max of the simulated_metadata, which we will have to predict on
+        h = min(rng.gamma(7, 8.4), max_y - y, 230)
         bbox_list.append([int(x), int(y), int(w), int(h)])
     return bbox_list
 
@@ -77,6 +79,6 @@ def crop_around_mask_bbox(image: np.ndarray, mask_bbox, crop_size=256, rng=None,
     assert crop_y + crop_size <= im_max_y, f"Crop_y is {crop_y}, such that we find max x of {crop_y + crop_size}"
 
     if return_new_mask_bbox:
-        return cropped_image, new_mask
+        return cropped_image, new_mask, [crop_y, crop_x, crop_size, crop_size]
     else:
         return cropped_image

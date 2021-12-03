@@ -61,7 +61,7 @@ def create_dataloader_trainval(opt):
     if opt.model == 'arrange':
         paths_and_nodules = get_paths_and_nodules(opt.train_image_dir, opt.include_chexpert,
                                               opt.include_mimic, opt.node21_resample_count)
-    elif opt.model == 'arrangedoubledisc':
+    elif opt.model == 'arrangedoubledisc' or opt.model == 'arrangeskipconn':
         paths_positive = get_paths_and_nodules(opt.train_image_dir, opt.include_chexpert,
                                               opt.include_mimic, opt.node21_resample_count)
         paths_negative = get_paths_negatives(opt.train_image_dir)

@@ -15,7 +15,7 @@ def metadata_list_negatives(metadata_location):
         reader = csv.reader(f_obj, delimiter=',')
         next(reader)  # skip header
         for line in reader:
-            _, img_path = [entry for entry in line]
+            _,img_path = [entry for entry in line]
             path_list.append(img_path)
     return path_list
 

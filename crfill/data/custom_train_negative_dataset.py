@@ -111,6 +111,8 @@ class CustomTrainNegativeDataset(BaseDataset):
                 #'full_image_mask_tensor': full_image_mask_tensor.float(),
                 'full_image_crop_bbox': full_image_crop_bbox.float(),  # for overlaying the generated result later on
                 'full_image': full_image_tensor.float(),  # needed for faster rcnn
+                'image_bbox': image_mask_bbox,
+                'real_image': image_tensor.float(),
                 'inputs': image_tensor.float(),
                 'mask': mask_tensor.float(),
             }

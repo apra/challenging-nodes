@@ -65,7 +65,11 @@ for epoch in iter_counter.training_epochs():
             for k, v in losses.items():
                 ts_writer.add_scalar(f"train/{k}", v.mean().item(), iter_counter.total_steps_so_far)
             writer.write_console(epoch, iter_counter.epoch_iter, iter_counter.time_per_iter)
-            num_print = min(4, data_i['real_image'].size(0))
+            if opt.model == 'arrangeskipconn':
+                input_name = 'neg_cropped_normalized_cxr'
+            else:
+                input_name = 'real_image'
+            num_print = min(4, data_i[input_name].size(0))
             # writer.add_single_image('inputs',
             #         (make_grid(data_i['full_image'][:num_print])+1)/2,
             #         iter_counter.total_steps_so_far)
@@ -73,8 +77,15 @@ for epoch in iter_counter.training_epochs():
             #                 draw_bounding_boxes(data_i['full_image'],data_i['bounding_box']),
             #                 iter_counter.total_steps_so_far)
             ts_writer.add_image('train/original_cropped',
-                               make_grid((data_i['real_image'][:num_print]+1)/2),
+                               make_grid((data_i[input_name][:num_print]+1)/2),
                                iter_counter.total_steps_so_far)
+            if opt.model == 'arrangeskipconn':
+                ts_writer.add_image('train/positive_input',
+                                    make_grid((data_i['pos_cropped_normalized_cxr'][:num_print] + 1) / 2),
+                                    iter_counter.total_steps_so_far)
+                ts_writer.add_image('train/desired_mask',
+                                    make_grid((data_i['neg_cropped_mask'][:num_print] + 1) / 2),
+                                    iter_counter.total_steps_so_far)
 
             infer_out,inp = trainer.model.forward(data_i, mode='inference')
             vis = (make_grid(inp[:num_print])+1)/2

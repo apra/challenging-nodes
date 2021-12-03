@@ -1,4 +1,6 @@
 import pdb
+import warnings
+
 import torch
 import models.networks as networks
 import util.util as util
@@ -7,7 +9,7 @@ import random
 import numpy as np
 
 
-class InpaintModel(torch.nn.Module):
+class InpaintskipconnModel(torch.nn.Module):
     @staticmethod
     def modify_commandline_options(parser, is_train):
         networks.modify_commandline_options(parser, is_train)
@@ -19,6 +21,8 @@ class InpaintModel(torch.nn.Module):
                             help='if specified, do *not* use refinementstageloss')
         parser.add_argument('--load_pretrained_g', type=str, required=False, help='load pt g')
         parser.add_argument('--load_pretrained_d', type=str, required=False, help='load pt d')
+        parser.add_argument('--fastercnn_loc', default='models/fasterrcnn.pth', help='location of the fasterrcnn.pth')
+        parser.add_argument('--no_sharp_skip_connection', action='store_true')
         return parser
 
     def __init__(self, opt):
@@ -54,22 +58,21 @@ class InpaintModel(torch.nn.Module):
     # can't parallelize custom functions, we branch to different
     # routines based on |mode|.
     def forward(self, data, mode):
-        inputs, real_image, mask = self.preprocess_input(data)
+        negative, positive, mask = self.preprocess_input(data)
 
         if mode == 'generator':
-            g_loss, coarse_image, composed_image = self.compute_generator_loss(
-                inputs, real_image, mask)
+            g_loss, coarse_image, composed_image = self.compute_generator_loss(negative, positive, mask)
             generated = {'coarse': coarse_image,
                          'composed': composed_image}
-            return g_loss, inputs, generated
+            return g_loss, negative, generated
         elif mode == 'discriminator':
-            d_loss = self.compute_discriminator_loss(inputs, real_image, mask)
+            d_loss = self.compute_discriminator_loss(negative, positive, mask)
             return d_loss, data['inputs']
         elif mode == 'inference':
             with torch.no_grad():
-                coarse_image, fake_image = self.generate_fake(inputs, real_image, mask)
-                composed_image = fake_image * mask + inputs * (1 - mask)
-            return composed_image, inputs
+                coarse_addition, fake_addition = self.generate_fake(negative, mask)
+                composed_image = self.place_addition_on_cxr(fake_addition,negative,mask)
+            return composed_image, negative
         else:
             raise ValueError("|mode| is invalid")
 
@@ -110,6 +113,7 @@ class InpaintModel(torch.nn.Module):
             netG = util.load_network(netG, 'G', opt.which_epoch, opt)
             if opt.isTrain:
                 netD = util.load_network(netD, 'D', opt.which_epoch, opt)
+                raise NotImplementedError('Loading DRCNN for continuing training not implemented yet')
         return netG, netD
 
     # preprocess the input, such as moving the tensors to GPUs and
@@ -117,6 +121,7 @@ class InpaintModel(torch.nn.Module):
     # |data|: dictionary of the input data
 
     def preprocess_input(self, data):
+        # TODO change infrastructure such that we can obtain positive images for the discriminator and negative for generator
         # b,c,h,w = data['image'].shape
         # if self.opt.isTrain:
         #     # generate random stroke mask
@@ -138,68 +143,58 @@ class InpaintModel(torch.nn.Module):
         #         data['mask'] = data['mask'].cuda()
         #     mask = data['mask']
         # move to GPU and change data types
-        if self.use_gpu():
-            data['real_image'] = data['real_image'].cuda()
-            data['inputs'] = data['inputs'].cuda()
+        # the full CXR of the negative sample
+        if self.use_gpu():  # this command is irrelevant, all data will already be at the GPU due to DataParallel in pix2pixtrainer
+            data['neg_cropped_normalized_cxr'] = data['neg_cropped_normalized_cxr'].cuda()
+            data['pos_cropped_normalized_cxr'] = data['pos_cropped_normalized_cxr'].cuda()
+            data['neg_cropped_mask'] = data['neg_cropped_mask'].cuda()
 
-        return data['inputs'], data['real_image'], data['mask']
+        return data['neg_cropped_normalized_cxr'], data['pos_cropped_normalized_cxr'], data['neg_cropped_mask']
 
-    def g_image_loss(self, coarse_image, fake_image, composed_image, real_image, mask):
+    def g_image_loss(self, coarse_image, negative, composed_image, positive, mask):
         G_losses = {}
 
+        # 'Normal' Adversarial
         if not self.opt.no_gan_loss and not self.opt.no_fine_loss:
-            pred_fake, pred_real = self.discriminate(
-                composed_image, real_image, mask)  # real image should be positive sample
+            pred_fake, pred_real = self.discriminate(composed_image, positive, mask)
 
-            G_losses['GAN'] = self.criterionGAN(pred_fake, True,
-                                                for_discriminator=False)
-
-        # if not self.opt.no_ganFeat_loss:
-        #     raise NotImplementedError
-        #     # this below was unreachable code....???
-        #     # num_D = len(pred_fake)
-        #     # GAN_Feat_loss = self.FloatTensor(1).fill_(0)
-        #     # for i in range(num_D):  # for each discriminator
-        #     #     # last output is the final prediction, so we exclude it
-        #     #     num_intermediate_outputs = len(pred_fake[i]) - 1
-        #     #     for j in range(num_intermediate_outputs):  # for each layer output
-        #     #         unweighted_loss = self.criterionFeat(
-        #     #             pred_fake[i][j], pred_real[i][j].detach())
-        #     #         GAN_Feat_loss += unweighted_loss * self.opt.lambda_feat / num_D
-        #     # G_losses['GAN_Feat'] = GAN_Feat_loss
+            G_losses['GAN'] = self.criterionGAN(pred_fake, True, for_discriminator=False)
 
         if self.opt.vgg_loss and not self.opt.no_fine_loss:
-            G_losses['VGG'] = self.criterionVGG(fake_image, real_image) \
+            G_losses['VGG'] = self.criterionVGG(negative, positive) \
                               * self.opt.lambda_vgg
         if not self.opt.no_l1_loss:
             if coarse_image is not None:
-                G_losses['L1_coarse'] = torch.nn.functional.l1_loss(coarse_image, real_image) * self.opt.beta_l1
+                G_losses['L1_coarse'] = torch.nn.functional.l1_loss(coarse_image*(1-mask), negative*(1-mask)) * self.opt.beta_l1
             if not self.opt.no_fine_loss:
-                G_losses['L1_fine'] = torch.nn.functional.l1_loss(fake_image, real_image) * self.opt.beta_l1
+                G_losses['L1_fine'] = torch.nn.functional.l1_loss(composed_image*(1-mask), negative*(1-mask)) * self.opt.beta_l1
         return G_losses
 
-    def compute_generator_loss(self, inputs, real_image, mask):
+    def place_addition_on_cxr(self, addition, starting_cxr, mask):
+        if not self.opt.no_sharp_skip_connection:
+            return (addition + starting_cxr) * mask + starting_cxr * (1 - mask)
 
-        coarse_image, fake_image = self.generate_fake(
-            inputs, real_image, mask)
+    def compute_generator_loss(self, negative, positive, mask):
 
-        composed_image = fake_image * mask + inputs * (1 - mask)
+        coarse_addition, additive_generation = self.generate_fake(negative, mask)
 
-        G_losses = self.g_image_loss(coarse_image, fake_image, composed_image, real_image, mask)
+        coarse_image = self.place_addition_on_cxr(coarse_addition, negative, mask)
+        composed_image = self.place_addition_on_cxr(additive_generation, negative, mask)
+
+        G_losses = self.g_image_loss(coarse_image, negative, composed_image, positive, mask)
 
         return G_losses, coarse_image, composed_image
 
-    def compute_discriminator_loss(self, inputs, real_image, mask):
+    def compute_discriminator_loss(self, negative, positive, desired_mask):
         D_losses = {}
         if not self.opt.no_gan_loss:
             with torch.no_grad():
-                coarse_image, fake_image = self.generate_fake(inputs, real_image, mask)
-                fake_image = fake_image.detach()
-                fake_image.requires_grad_()
-                composed_image = fake_image * mask + inputs * (1 - mask)
+                coarse_add, fine_add = self.generate_fake(negative, desired_mask)
+                fine_add = fine_add.detach()
+                fine_add.requires_grad_()
+                composed_image = self.place_addition_on_cxr(fine_add,negative,desired_mask)
 
-            pred_fake, pred_real = self.discriminate(
-                composed_image, real_image, mask)
+            pred_fake, pred_real = self.discriminate(composed_image, positive, desired_mask)
 
             D_losses['D_Fake'] = self.criterionGAN(pred_fake, False,
                                                    for_discriminator=True)
@@ -208,7 +203,7 @@ class InpaintModel(torch.nn.Module):
 
         return D_losses
 
-    def generate_fake(self, inputs, real_image, mask):
+    def generate_fake(self, inputs, mask):
         coarse_image, fake_image = self.netG(inputs, mask)
 
         return coarse_image, fake_image
@@ -219,7 +214,6 @@ class InpaintModel(torch.nn.Module):
     def discriminate(self, fake_image, real_image, mask):
         fake_concat = fake_image
         real_concat = real_image
-
         # In Batch Normalization, the fake and real images are
         # recommended to be in the same batch to avoid disparate
         # statistics in fake and real images.
@@ -235,6 +229,19 @@ class InpaintModel(torch.nn.Module):
         pred_fake, pred_real = self.divide_pred(discriminator_out)
 
         return pred_fake, pred_real
+
+    def RCNN_loss(self, composed_image, ground_truth_bbox):
+        targets = [{'boxes': torch.unsqueeze(bbox, 0),
+                    'labels': torch.LongTensor([1]).cuda()} for bbox in ground_truth_bbox]  # label=1 for tumor class
+        loss_dict = self.netDRCNN(composed_image, targets)
+
+        _loss_sum = 0
+        count = 0
+        for key in loss_dict:
+            count += 1
+            _loss_sum += loss_dict[key]
+        # TODO: think about what (sum of) loss is the correct one to return
+        return _loss_sum
 
     # Take the prediction of fake and real images from the combined batch
     def divide_pred(self, pred):
