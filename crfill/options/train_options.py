@@ -46,6 +46,7 @@ class TrainOptions(BaseOptions):
         # for discriminators
         parser.add_argument('--ndf', type=int, default=64, help='# of discrim filters in first conv layer')
         parser.add_argument('--lambda_feat', type=float, default=10.0, help='weight for feature matching loss')
+        parser.add_argument('--lambda_rcnn', type=float, default=1.0, help='weight for the rcnn loss')
         #parser.add_argument('--lambda_vgg', type=float, default=10.0, help='weight for vgg loss')
         parser.add_argument('--beta_l1', type=float, default=1.0, help='weight for l1 loss, this is actually beta in the paper')
         parser.add_argument('--no_l1_loss', action='store_true', help='if specified, do *not* use l1 loss')

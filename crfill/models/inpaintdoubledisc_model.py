@@ -260,7 +260,7 @@ class InpaintdoublediscModel(torch.nn.Module):
             count += 1
             _loss_sum += loss_dict[key]
         # TODO: think about what (sum of) loss is the correct one to return
-        return _loss_sum
+        return _loss_sum * self.opt.lambda_rcnn
 
     # Take the prediction of fake and real images from the combined batch
     def divide_pred(self, pred):
