@@ -132,7 +132,7 @@ for epoch in iter_counter.training_epochs():
                     generated,_ = model(data_ii, mode='inference')
                     generated = generated.cpu()
                 generated = (generated+1)/2*255
-                gt = data_ii['real_image']
+                gt = data_ii[input_name]
                 bsize, c, h, w = gt.shape
                 gt = (gt+1)/2*255
                 mse = ((generated-gt)**2).sum(3).sum(2).sum(1)
