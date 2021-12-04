@@ -123,9 +123,13 @@ class CustomTrainAllDataset(BaseDataset):
 
             neg_cropped_normalized_cxr = self.transform(neg_cropped_cxr)
 
+            neg_cxr = torch.unsqueeze(torch.Tensor(neg_cxr), 0)
+
+            fasterrcnn_bbox = full_image_bbox = torch.Tensor([neg_lesion_bbox[0], neg_lesion_bbox[1], neg_lesion_bbox[0]+neg_lesion_bbox[2], neg_lesion_bbox[1]+neg_lesion_bbox[3]])
+
             input_dict = {
                 # the full CXR of the negative sample
-                'neg_cxr': torch.Tensor(neg_cxr).float(),
+                'neg_cxr': neg_cxr.float(),
                 # cropped and normalized (between -0.5 and 0.5) CXR of the positive sample (input to the discriminator)
                 'pos_cropped_normalized_cxr': pos_cropped_normalized_cxr.float(),
                 # cropped and normalized (between -0.5 and 0.5) CXR of the negative sample (input to the generator)
@@ -133,7 +137,9 @@ class CustomTrainAllDataset(BaseDataset):
                 # array with the [x,y,w,h] of the cropping bounding box in the negative sample (used for placing result)
                 'neg_crop_bbox': torch.Tensor(neg_crop_bbox),
                 # mask used to select the region where the tumor should be placed by the generator
-                'neg_cropped_mask': torch.Tensor(neg_cropped_mask)
+                'neg_cropped_mask': torch.Tensor(neg_cropped_mask),
+                # bbox used for the faster rcnn
+                'neg_lesion_bbox': full_image_bbox
             }
             return input_dict
         except FileNotFoundError:

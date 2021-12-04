@@ -34,7 +34,7 @@ class InpaintskipconnModel(torch.nn.Module):
         self.ByteTensor = torch.cuda.ByteTensor if self.use_gpu() \
             else torch.ByteTensor
 
-        self.netG, self.netD = self.initialize_networks(opt)
+        self.netG, self.netD, self.netDRCNN = self.initialize_networks(opt)
         if opt.isTrain and opt.load_pretrained_g is not None:
             print(f"looad {opt.load_pretrained_g}")
             self.netG = util.load_network_path(
@@ -58,10 +58,10 @@ class InpaintskipconnModel(torch.nn.Module):
     # can't parallelize custom functions, we branch to different
     # routines based on |mode|.
     def forward(self, data, mode):
-        negative, positive, mask = self.preprocess_input(data)
+        negative, positive, mask, crop_bbox, lesion_bbox, cxr = self.preprocess_input(data)
 
         if mode == 'generator':
-            g_loss, coarse_image, composed_image = self.compute_generator_loss(negative, positive, mask)
+            g_loss, coarse_image, composed_image = self.compute_generator_loss(negative, positive, mask, cxr)
             generated = {'coarse': coarse_image,
                          'composed': composed_image}
             return g_loss, negative, generated
@@ -106,15 +106,17 @@ class InpaintskipconnModel(torch.nn.Module):
         netG = networks.define_G(opt)
         if opt.isTrain:
             netD = networks.define_D(opt)
+            netDRCNN = networks.define_DRCNN(opt)
         else:
             netD = None
+            netDRCNN = None
 
         if not opt.isTrain or opt.continue_train:
             netG = util.load_network(netG, 'G', opt.which_epoch, opt)
             if opt.isTrain:
                 netD = util.load_network(netD, 'D', opt.which_epoch, opt)
                 raise NotImplementedError('Loading DRCNN for continuing training not implemented yet')
-        return netG, netD
+        return netG, netD, netDRCNN
 
     # preprocess the input, such as moving the tensors to GPUs and
     # transforming the label map to one-hot encoding
@@ -149,10 +151,16 @@ class InpaintskipconnModel(torch.nn.Module):
             data['pos_cropped_normalized_cxr'] = data['pos_cropped_normalized_cxr'].cuda()
             data['neg_cropped_mask'] = data['neg_cropped_mask'].cuda()
 
-        return data['neg_cropped_normalized_cxr'], data['pos_cropped_normalized_cxr'], data['neg_cropped_mask']
+        return data['neg_cropped_normalized_cxr'], data['pos_cropped_normalized_cxr'], data['neg_cropped_mask'], data['neg_crop_bbox'], data['neg_lesion_bbox'], data['neg_cxr']
 
-    def g_image_loss(self, coarse_image, negative, composed_image, positive, mask):
+    def g_image_loss(self, coarse_image, negative, composed_image, positive, mask, composed_full_image, full_image_bbox):
         G_losses = {}
+
+        # Faster RCNN loss -- For aux loss, composed_full_image and full_image_bbox will be passed as None
+        if composed_full_image is not None:
+            rcnn_losses = self.RCNN_loss(composed_full_image, full_image_bbox)
+            G_losses['RCNN'] = rcnn_losses
+            # G_losses['RCNN'] = self.criterionGAN(pred_rcnn, True, for_discriminator=False)
 
         # 'Normal' Adversarial
         if not self.opt.no_gan_loss and not self.opt.no_fine_loss:
@@ -174,16 +182,8 @@ class InpaintskipconnModel(torch.nn.Module):
         if not self.opt.no_sharp_skip_connection:
             return (addition + starting_cxr) * mask + starting_cxr * (1 - mask)
 
-    def compute_generator_loss(self, negative, positive, mask):
-
-        coarse_addition, additive_generation = self.generate_fake(negative, mask)
-
-        coarse_image = self.place_addition_on_cxr(coarse_addition, negative, mask)
-        composed_image = self.place_addition_on_cxr(additive_generation, negative, mask)
-
-        G_losses = self.g_image_loss(coarse_image, negative, composed_image, positive, mask)
-
-        return G_losses, coarse_image, composed_image
+    def compute_generator_loss(self, negative, positive, mask, crop_bbox, lesion_bbox, cxr):
+        return NotImplementedError
 
     def compute_discriminator_loss(self, negative, positive, desired_mask):
         D_losses = {}

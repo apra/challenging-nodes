@@ -16,7 +16,7 @@ class ArrangeskipconnModel(InpaintskipconnModel):
 
     def __init__(self, opt):
         super().__init__(opt)
-        _, self.netD_aux = self.initialize_networks(opt)
+        _, self.netD_aux, self.netDRCNN = self.initialize_networks(opt)
         if opt.continue_train:
             self.netD_aux = util.load_network(self.netD_aux, 'D_aux', opt.which_epoch, opt)
         if opt.load_base_g is not None:
@@ -53,11 +53,11 @@ class ArrangeskipconnModel(InpaintskipconnModel):
         return optimizer_G, optimizer_D
 
     def forward(self, data, mode):
-        negative, positive, mask = self.preprocess_input(data)
+        negative, positive, mask, crop_bbox, lesion_bbox, cxr = self.preprocess_input(data)
 
         if mode == 'generator':
             g_loss, composed_image, composed_image_aux, recon_aux = self.compute_generator_loss(negative, positive,
-                                                                                                mask)
+                                                                                                mask, crop_bbox, lesion_bbox, cxr)
             generated = {
                 'composed': composed_image,
                 'composed_aux': composed_image_aux,
@@ -111,7 +111,7 @@ class ArrangeskipconnModel(InpaintskipconnModel):
 
         return D_losses
 
-    def compute_generator_loss(self, negative, positive, mask):
+    def compute_generator_loss(self, negative, positive, mask, crop_bbox, lesion_bbox, cxr):
         # if not self.opt.no_ganFeat_loss:
         #     raise NotImplementedError
         if self.opt.vgg_loss:
@@ -120,12 +120,23 @@ class ArrangeskipconnModel(InpaintskipconnModel):
         coarse_image = self.place_addition_on_cxr(coarse_addition, negative, mask)
         composed_image = self.place_addition_on_cxr(additive_generation, negative, mask)
 
-        G_losses = self.g_image_loss(coarse_image, negative, composed_image, positive, mask)
+        fake_cxr = cxr
+        for i in range(len(crop_bbox)):
+            c_x1, c_y1, c_w, c_h = crop_bbox[i].int()
+            try:
+                fake_cxr[i, :, c_y1:c_y1 + c_h, c_x1:c_x1 + c_w] = composed_image[i]
+            except RuntimeError:
+                print(composed_image[i])
+                print(fake_cxr[i])
+                print(composed_image[i].shape)
+                print(fake_cxr[i].shape)
+
+        G_losses = self.g_image_loss(coarse_image, negative, composed_image, positive, mask, fake_cxr, lesion_bbox)
 
         composed_image_aux = self.place_addition_on_cxr(aux_image, negative, mask)
         _netD = self.netD
         self.netD = self.netD_aux
-        G_losses_aux = self.g_image_loss(None, negative, composed_image_aux, positive, mask)
+        G_losses_aux = self.g_image_loss(None, negative, composed_image_aux, positive, mask, fake_cxr, lesion_bbox)
         self.netD = _netD
         for k, v in G_losses_aux.items():
             G_losses[k + "_aux"] = v * self.opt.lambda_ref

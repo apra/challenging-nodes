@@ -7,8 +7,8 @@
 #SBATCH --gpus-per-node=titanrtx:4
 #SBATCH --cpus-per-task=24
 #SBATCH -N 1
-#SBATCH --output=skipconn_%A.out
-#SBATCH --error=skipconn_%A.err
+#SBATCH --output=skipconndoubledisc_%A.out
+#SBATCH --error=skipconndoubledisc_%A.err
 
 JOBS_SOURCE="$HOME/challenging-nodes/crfill"
 SINGULARITYIMAGE="$HOME/crfill.sif"
