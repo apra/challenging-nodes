@@ -165,9 +165,9 @@ class InpaintskipconnModel(torch.nn.Module):
                               * self.opt.lambda_vgg
         if not self.opt.no_l1_loss:
             if coarse_image is not None:
-                G_losses['L1_coarse'] = torch.nn.functional.l1_loss(coarse_image*(1-mask), negative*(1-mask)) * self.opt.beta_l1
+                G_losses['L1_coarse'] = torch.nn.functional.l1_loss(coarse_image, negative) * self.opt.beta_l1
             if not self.opt.no_fine_loss:
-                G_losses['L1_fine'] = torch.nn.functional.l1_loss(composed_image*(1-mask), negative*(1-mask)) * self.opt.beta_l1
+                G_losses['L1_fine'] = torch.nn.functional.l1_loss(composed_image, negative) * self.opt.beta_l1
         return G_losses
 
     def place_addition_on_cxr(self, addition, starting_cxr, mask):
