@@ -34,7 +34,7 @@ NAME="skipconndoubledisc_2gpus_beta_l$BETAL1_1-lambda_feat$LAMBDA_1"
 
 STANDARD_PARAMS="--seed 0 --batchSize 40 --niter_decay 8 --include_chexpert --include_mimic --node21_resample_count 10 --dataset_mode_train custom_train_all --dataset_mode custom_train --train_image_dir /data --netG twostagend --netD deepfill --preprocess_mode none --validation_freq 20000 --niter 43 --display_freq 5000 --model arrangeskipconn"
 
-COMMAND="python -u train.py --name $NAME --num_workers $NUM_WORKERS --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids 0,1,2,3 --beta_l1 $BETAL1_2 --lambda_ref $LAMBDA_2 $STANDARD_PARAMS"
+COMMAND="python -u train.py --name $NAME --num_workers $NUM_WORKERS --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids 0,1,2,3 --beta_l1 $BETAL1_1 --lambda_ref $LAMBDA_1 $STANDARD_PARAMS"
 
 echo "Running $NAME"
 singularity exec --no-home --nv \
