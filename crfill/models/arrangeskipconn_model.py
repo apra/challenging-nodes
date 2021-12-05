@@ -65,8 +65,7 @@ class ArrangeskipconnModel(InpaintskipconnModel):
             }
             return g_loss, negative, generated
         elif mode == 'discriminator':
-            d_loss = self.compute_discriminator_loss(
-                negative, positive, mask)
+            d_loss = self.compute_discriminator_loss(negative, positive, mask)
             return d_loss, negative
         elif mode == 'inference':
             with torch.no_grad():
