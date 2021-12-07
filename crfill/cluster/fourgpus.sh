@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -t 15:00:00
+#SBATCH -t 10:00:00
 #SBATCH --mail-type=END
 #SBATCH --mail-user=samuele.papa@gmail.com
 #SBATCH -p gpu_titanrtx
