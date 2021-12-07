@@ -16,7 +16,7 @@ class ArrangeskipconnModel(InpaintskipconnModel):
 
     def __init__(self, opt):
         super().__init__(opt)
-        _, self.netD_aux, self.netDRCNN = self.initialize_networks(opt)
+        _, self.netD_aux, self.netDRCNN_aux = self.initialize_networks(opt)
         if opt.continue_train:
             self.netD_aux = util.load_network(self.netD_aux, 'D_aux', opt.which_epoch, opt)
         if opt.load_base_g is not None:
@@ -35,11 +35,12 @@ class ArrangeskipconnModel(InpaintskipconnModel):
 
     def create_optimizers(self, opt):
         G_params = self.netG.get_param_list(opt.update_part)
-        # G_params = [p for name, p in self.netG.named_parameters() \
+        #G_params = [p for name, p in self.netG.named_parameters() \
         #        if (not name.startswith("coarse"))]
         if opt.isTrain:
             D_params = list(self.netD.parameters()) + \
-                       list(self.netD_aux.parameters())
+                    list(self.netD_aux.parameters())
+            DRCNN_params = self.netDRCNN.parameters()
 
         beta1, beta2 = opt.beta1, opt.beta2
         if opt.no_TTUR:
@@ -49,15 +50,17 @@ class ArrangeskipconnModel(InpaintskipconnModel):
 
         optimizer_G = torch.optim.Adam(G_params, lr=G_lr, betas=(beta1, beta2))
         optimizer_D = torch.optim.Adam(D_params, lr=D_lr, betas=(beta1, beta2))
+        optimizer_DRCNN = torch.optim.Adam(DRCNN_params, lr=0)
 
-        return optimizer_G, optimizer_D
+        return optimizer_G, optimizer_D, optimizer_DRCNN
 
     def forward(self, data, mode):
         negative, positive, mask, crop_bbox, lesion_bbox, cxr = self.preprocess_input(data)
 
         if mode == 'generator':
             g_loss, composed_image, composed_image_aux, recon_aux = self.compute_generator_loss(negative, positive,
-                                                                                                mask, crop_bbox, lesion_bbox, cxr)
+                                                                                                mask, crop_bbox,
+                                                                                                lesion_bbox, cxr)
             generated = {
                 'composed': composed_image,
                 'composed_aux': composed_image_aux,
@@ -110,6 +113,16 @@ class ArrangeskipconnModel(InpaintskipconnModel):
 
         return D_losses
 
+    def place_using_bbox(self, base_image, crop_image, bbox):
+        c_x1, c_y1, c_w, c_h = bbox.int()
+        try:
+            base_image[:, c_y1:c_y1 + c_h, c_x1:c_x1 + c_w] = (crop_image + 1) / 2
+        except RuntimeError:
+            print(crop_image)
+            print(base_image)
+            print(crop_image.shape)
+            print(base_image.shape)
+
     def compute_generator_loss(self, negative, positive, mask, crop_bbox, lesion_bbox, cxr):
         # if not self.opt.no_ganFeat_loss:
         #     raise NotImplementedError
@@ -121,14 +134,7 @@ class ArrangeskipconnModel(InpaintskipconnModel):
 
         fake_cxr = cxr
         for i in range(len(crop_bbox)):
-            c_x1, c_y1, c_w, c_h = crop_bbox[i].int()
-            try:
-                fake_cxr[i, :, c_y1:c_y1 + c_h, c_x1:c_x1 + c_w] = composed_image[i]
-            except RuntimeError:
-                print(composed_image[i])
-                print(fake_cxr[i])
-                print(composed_image[i].shape)
-                print(fake_cxr[i].shape)
+            self.place_using_bbox(fake_cxr[i], composed_image[i], crop_bbox[i])
 
         G_losses = self.g_image_loss(coarse_image, negative, composed_image, positive, mask, fake_cxr, lesion_bbox)
 
