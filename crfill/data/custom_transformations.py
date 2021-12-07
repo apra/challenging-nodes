@@ -79,6 +79,6 @@ def crop_around_mask_bbox(image: np.ndarray, mask_bbox, crop_size=256, rng=None,
     assert crop_y + crop_size <= im_max_y, f"Crop_y is {crop_y}, such that we find max x of {crop_y + crop_size}"
 
     if return_new_mask_bbox:
-        return cropped_image, new_mask, [crop_y, crop_x, crop_size, crop_size]
+        return cropped_image, new_mask, [crop_x, crop_y, crop_size, crop_size]
     else:
         return cropped_image

@@ -92,8 +92,7 @@ class CustomTrainNegativeDataset(BaseDataset):
 
             image_mask_bbox = mask_convention_setter(
                 image_mask_bbox)  # use this method to set conventions for mask bbox
-
-            cropped_image, new_mask_bbox = crop_around_mask_bbox(full_image, image_mask_bbox,
+            cropped_image, new_mask_bbox, _ = crop_around_mask_bbox(full_image, image_mask_bbox,
                                                                  crop_size=crop_size, rng=self.rng)  # Crop around nodule
             full_image = np.array(normalize_cxr(full_image), dtype='float32')
             cropped_image = np.array(normalize_cxr(cropped_image), dtype='float32')  # divide 4095

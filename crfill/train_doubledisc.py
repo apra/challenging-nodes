@@ -50,7 +50,6 @@ for epoch in iter_counter.training_epochs():
     iter_counter.record_epoch_start(epoch)
     for i, data_i in enumerate(dataloader_train, start=iter_counter.epoch_iter):
         iter_counter.record_one_iteration()
-        data_i['real_image'] = data_i['inputs']  #TODO remove this -- only for debugging
         # train discriminator
         if not opt.freeze_D:
             trainer.run_discriminator_one_step(data_i, i)

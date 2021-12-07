@@ -123,7 +123,6 @@ class InpaintdoublediscModel(torch.nn.Module):
     # |data|: dictionary of the input data
 
     def preprocess_input(self, data):
-        # TODO change infrastructure such that we can obtain positive images for the discriminator and negative for generator
         # b,c,h,w = data['image'].shape
         # if self.opt.isTrain:
         #     # generate random stroke mask
@@ -145,12 +144,11 @@ class InpaintdoublediscModel(torch.nn.Module):
         #         data['mask'] = data['mask'].cuda()
         #     mask = data['mask']
         # move to GPU and change data types
-        if self.use_gpu():  # this command is irrelevant, all data will already be at the GPU due to DataParallel in pix2pixtrainer
-            data['inputs'] = data['inputs'].cuda()
+        #if self.use_gpu():  # this command is irrelevant, all data will already be at the GPU due to DataParallel in pix2pixtrainer
+        #    data['inputs'] = data['inputs'].cuda()
 
-        data['real_image'] = data['inputs']  # TODO: remove/adjust -- is for debugging purposes only
-
-        return data['inputs'], data['real_image'], data['mask'], data['full_image'], data['full_image_crop_bbox'], data['full_image_bbox']
+        #return data['inputs'], data['real_image'], data['mask'], data['full_image'], data['full_image_crop_bbox'], data['full_image_bbox']
+        return data['neg_cropped_normalized_cxr'], data['pos_cropped_normalized_cxr'], data['neg_cropped_mask'], data['neg_cxr'], data['neg_crop_bbox'], data['neg_lesion_bbox']
 
     def g_image_loss(self, coarse_image, fake_image, composed_image, real_image, mask, composed_full_image, full_image_bbox):
         G_losses = {}
@@ -188,9 +186,9 @@ class InpaintdoublediscModel(torch.nn.Module):
                               * self.opt.lambda_vgg
         if not self.opt.no_l1_loss:
             if coarse_image is not None:
-                G_losses['L1_coarse'] = torch.nn.functional.l1_loss(coarse_image, real_image) * self.opt.beta_l1
+                G_losses['L1_coarse'] = torch.nn.functional.l1_loss(coarse_image, fake_image) * self.opt.beta_l1
             if not self.opt.no_fine_loss:
-                G_losses['L1_fine'] = torch.nn.functional.l1_loss(fake_image, real_image) * self.opt.beta_l1
+                G_losses['L1_fine'] = torch.nn.functional.l1_loss(fake_image, real_image) * 0 # this one is now void -- real image is unrelated to fake_image
         return G_losses
 
     def compute_generator_loss(self, inputs, real_image, mask):
@@ -222,7 +220,7 @@ class InpaintdoublediscModel(torch.nn.Module):
 
         return D_losses
 
-    def generate_fake(self, inputs, real_image, mask):
+    def generate_fake(self, inputs, mask):
         coarse_image, fake_image = self.netG(inputs, mask)
 
         return coarse_image, fake_image

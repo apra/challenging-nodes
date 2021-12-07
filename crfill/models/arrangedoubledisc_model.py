@@ -69,7 +69,7 @@ class ArrangedoublediscModel(InpaintdoublediscModel):
         elif mode == 'discriminator':
             d_loss = self.compute_discriminator_loss(
                 inputs, real_image, mask)
-            return d_loss, data['inputs']
+            return d_loss, inputs
         elif mode == 'inference':
             with torch.no_grad():
                 coarse_image, fake_image, aux_image, recon_aux = self.generate_fake(
@@ -80,7 +80,7 @@ class ArrangedoublediscModel(InpaintdoublediscModel):
             raise ValueError("|mode| is invalid")
 
 
-    def generate_fake(self, inputs, real_image, mask):
+    def generate_fake(self, inputs, mask):
         coarse_image, fake_image, aux_image, recon_aux = self.netG(inputs, mask)
 
         return coarse_image, fake_image, aux_image, recon_aux
@@ -90,7 +90,7 @@ class ArrangedoublediscModel(InpaintdoublediscModel):
         if not self.opt.no_gan_loss:
             with torch.no_grad():
                 coarse_image, fake_image, aux_image, recon_aux = self.generate_fake(
-                        inputs, real_image, mask)
+                        inputs, mask)
             fake_image = fake_image.detach()
             fake_image.requires_grad_()
             aux_image = aux_image.detach()
@@ -123,12 +123,8 @@ class ArrangedoublediscModel(InpaintdoublediscModel):
         if self.opt.vgg_loss:
             raise NotImplementedError
         coarse_image, fake_image, aux_image, recon_aux = self.generate_fake(
-                inputs, real_image, mask)
+                inputs, mask)
         composed_image = fake_image*mask + inputs*(1-mask)
-
-        # small_test = composed_image[0].cpu().detach().numpy().reshape((256,256))
-        # small_test = (small_test*0.5 + 0.5) * 255
-        # Image.fromarray(small_test).convert("L").save("small.jpeg")
 
         composed_full_image = full_image
         for i in range(len(full_image_crop_bbox)):
@@ -140,10 +136,6 @@ class ArrangedoublediscModel(InpaintdoublediscModel):
                 print(composed_full_image[i])
                 print(composed_image[i].shape)
                 print(composed_full_image[i].shape)
-
-        # large_test = composed_full_image[0].cpu().detach().numpy().reshape((1024,1024))
-        # large_test = (large_test * 0.5 + 0.5) * 255
-        # Image.fromarray(large_test).convert("L").save("large.jpeg")
 
         G_losses = self.g_image_loss(coarse_image, fake_image, composed_image, real_image, mask, composed_full_image, full_image_bbox)
 

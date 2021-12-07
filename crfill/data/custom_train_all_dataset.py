@@ -125,7 +125,7 @@ class CustomTrainAllDataset(BaseDataset):
 
             neg_cxr = torch.unsqueeze(torch.Tensor(neg_cxr), 0)
 
-            fasterrcnn_bbox = full_image_bbox = torch.Tensor([neg_lesion_bbox[0], neg_lesion_bbox[1], neg_lesion_bbox[0]+neg_lesion_bbox[2], neg_lesion_bbox[1]+neg_lesion_bbox[3]])
+            full_image_bbox = torch.Tensor([neg_lesion_bbox[0], neg_lesion_bbox[1], neg_lesion_bbox[0]+neg_lesion_bbox[2], neg_lesion_bbox[1]+neg_lesion_bbox[3]])
 
             input_dict = {
                 # the full CXR of the negative sample

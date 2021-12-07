@@ -135,7 +135,7 @@ class ArrangeskipconnModel(InpaintskipconnModel):
         composed_image_aux = self.place_addition_on_cxr(aux_image, negative, mask)
         _netD = self.netD
         self.netD = self.netD_aux
-        G_losses_aux = self.g_image_loss(None, negative, composed_image_aux, positive, mask, fake_cxr, lesion_bbox)
+        G_losses_aux = self.g_image_loss(None, negative, composed_image_aux, positive, mask, None, lesion_bbox)
         self.netD = _netD
         for k, v in G_losses_aux.items():
             G_losses[k + "_aux"] = v * self.opt.lambda_ref

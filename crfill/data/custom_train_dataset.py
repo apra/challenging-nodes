@@ -97,12 +97,12 @@ class CustomTrainDataset(BaseDataset):
             crop_size = self.opt.crop_around_mask_size
 
             # Crop around nodule
-            cropped_image, new_mask_bbox = crop_around_mask_bbox(full_image, image_mask_bbox,
+            cropped_image, new_mask_bbox, _ = crop_around_mask_bbox(full_image, image_mask_bbox,
                                                                  crop_size=crop_size,
                                                                  rng=self.rng)
             cropped_image = normalize_cxr(cropped_image)  # divide 4095
             cropped_masked_image, mask_array = mask_image(cropped_image, new_mask_bbox)
-
+            full_image = np.array(normalize_cxr(full_image), dtype='float32')
             # params = get_params(self.opt, cropped_image.shape)
 
             mask_tensor = torch.Tensor(mask_array)
