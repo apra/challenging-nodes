@@ -16,7 +16,7 @@ EXPERIMENT_NAME="only_fasterRCNN"
 JOBS_SOURCE="$HOME/challenging-nodes/crfill"
 SINGULARITYIMAGE="$HOME/crfill.sif"
 DATA="$TMPDIR/spapa"
-TRAINING_SCRIPT="trainq_doubledisc.py"
+TRAINING_SCRIPT="train_doubledisc.py"
 
 #Beta for the first task
 BETAL1_1=$1
