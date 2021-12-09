@@ -8,9 +8,7 @@ import models
 import models.arrange_model
 
 
-
-
-class Pix2PixDoubleDiscTrainer():
+class Pix2PixDoubleDiscTrainer:
     """
     Trainer creates the model and optimizers, and uses them to
     updates the weights of the network while reporting losses
@@ -20,10 +18,9 @@ class Pix2PixDoubleDiscTrainer():
     def __init__(self, opt):
         self.opt = opt
         self.model = models.create_model(opt)
-        #self.model = models.arrange_model.ArrangeModel(opt=opt)
+        # self.model = models.arrange_model.ArrangeModel(opt=opt)
         if len(opt.gpu_ids) > 0:
-            self.model = DataParallelWithCallback(self.model,
-                                                  device_ids=opt.gpu_ids)
+            self.model = DataParallelWithCallback(self.model, device_ids=opt.gpu_ids)
             self.model_on_one_gpu = self.model.module
         else:
             self.model_on_one_gpu = self.model
@@ -31,14 +28,17 @@ class Pix2PixDoubleDiscTrainer():
         self.generated = None
         self.inputs = None
         if opt.isTrain:
-            self.optimizer_G, self.optimizer_D, self.optimizer_DRCNN = \
-                self.model_on_one_gpu.create_optimizers(opt)
+            (
+                self.optimizer_G,
+                self.optimizer_D,
+                self.optimizer_DRCNN,
+            ) = self.model_on_one_gpu.create_optimizers(opt)
             self.old_lr = opt.lr
 
     def run_generator_one_step(self, data, i):
         self.optimizer_G.zero_grad()
         self.optimizer_DRCNN.zero_grad()  # reset gradients over rcnn
-        g_losses, inputs, generated = self.model(data, mode='generator')
+        g_losses, inputs, generated = self.model(data, mode="generator")
         g_loss = sum(g_losses.values()).mean()
         g_loss.backward()
         self.optimizer_G.step()
@@ -50,7 +50,7 @@ class Pix2PixDoubleDiscTrainer():
         self.d_losses = {}
         if not self.opt.no_gan_loss:
             self.optimizer_D.zero_grad()
-            d_losses, inputs = self.model(data, mode='discriminator')
+            d_losses, inputs = self.model(data, mode="discriminator")
             d_loss = sum(d_losses.values()).mean()
             d_loss.backward()
             self.optimizer_D.step()
@@ -94,8 +94,8 @@ class Pix2PixDoubleDiscTrainer():
                 new_lr_D = new_lr * 2
 
             for param_group in self.optimizer_D.param_groups:
-                param_group['lr'] = new_lr_D
+                param_group["lr"] = new_lr_D
             for param_group in self.optimizer_G.param_groups:
-                param_group['lr'] = new_lr_G
-            print('update learning rate: %f -> %f' % (self.old_lr, new_lr))
+                param_group["lr"] = new_lr_G
+            print("update learning rate: %f -> %f" % (self.old_lr, new_lr))
             self.old_lr = new_lr

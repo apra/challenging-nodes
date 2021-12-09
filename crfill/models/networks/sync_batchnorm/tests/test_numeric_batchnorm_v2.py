@@ -57,6 +57,5 @@ class NumericTestCasev2(TorchTestCase):
         self.assertTensorClose(batchnorm2.running_mean, batchnorm2.running_mean)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-

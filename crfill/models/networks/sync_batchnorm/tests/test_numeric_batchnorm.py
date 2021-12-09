@@ -52,5 +52,5 @@ class NumericTestCase(TorchTestCase):
         self.assertTensorClose(a_var1.grad, a_var2.grad)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

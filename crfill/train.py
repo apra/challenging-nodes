@@ -10,21 +10,23 @@ from logger import Logger
 from torchvision.utils import make_grid
 from trainers import create_trainer
 from torch.utils import tensorboard
-#from torch.utils.tensorboard import SummaryWriter
+
+# from torch.utils.tensorboard import SummaryWriter
 from util.util import set_all_seeds
 from trainers.pix2pix_trainer import Pix2PixTrainer
 
 from torchvision import datasets, transforms
 from util.plot_util import draw_bounding_boxes
+
 # parse options
 # temporary fix for LISA
-#torch.set_num_threads(24)
+# torch.set_num_threads(24)
 opt = TrainOptions().parse()
 
 set_all_seeds(opt.seed)
 
 # print options to help debugging
-print(' '.join(sys.argv))
+print(" ".join(sys.argv))
 
 # load the dataset
 dataloader_train, dataloader_val = data.create_dataloader_trainval(opt)
@@ -40,11 +42,11 @@ iter_counter = IterationCounter(opt, len(dataloader_train))
 # create tool for visualization
 writer = Logger(f"output/{opt.name}")
 
-ts_writer = tensorboard.SummaryWriter(f'{opt.checkpoints_dir}/tensorboard')
+ts_writer = tensorboard.SummaryWriter(f"{opt.checkpoints_dir}/tensorboard")
 
-trainer.save('latest')
+trainer.save("latest")
 
-#torch.multiprocessing.set_sharing_strategy('file_system')
+# torch.multiprocessing.set_sharing_strategy('file_system')
 
 for epoch in iter_counter.training_epochs():
     iter_counter.record_epoch_start(epoch)
@@ -63,12 +65,16 @@ for epoch in iter_counter.training_epochs():
         if iter_counter.needs_displaying():
             losses = trainer.get_latest_losses()
             for k, v in losses.items():
-                ts_writer.add_scalar(f"train/{k}", v.mean().item(), iter_counter.total_steps_so_far)
-            writer.write_console(epoch, iter_counter.epoch_iter, iter_counter.time_per_iter)
-            if opt.model == 'arrangeskipconn':
-                input_name = 'neg_cropped_normalized_cxr'
+                ts_writer.add_scalar(
+                    f"train/{k}", v.mean().item(), iter_counter.total_steps_so_far
+                )
+            writer.write_console(
+                epoch, iter_counter.epoch_iter, iter_counter.time_per_iter
+            )
+            if opt.model == "arrangeskipconn":
+                input_name = "neg_cropped_normalized_cxr"
             else:
-                input_name = 'real_image'
+                input_name = "real_image"
             num_print = min(4, data_i[input_name].size(0))
             # writer.add_single_image('inputs',
             #         (make_grid(data_i['full_image'][:num_print])+1)/2,
@@ -76,51 +82,52 @@ for epoch in iter_counter.training_epochs():
             # ts_writer.add_image('inputs',
             #                 draw_bounding_boxes(data_i['full_image'],data_i['bounding_box']),
             #                 iter_counter.total_steps_so_far)
-            ts_writer.add_image('train/original_cropped',
-                               make_grid((data_i[input_name][:num_print]+1)/2),
-                               iter_counter.total_steps_so_far)
-            if opt.model == 'arrangeskipconn':
-                ts_writer.add_image('train/positive_input',
-                                    make_grid((data_i['pos_cropped_normalized_cxr'][:num_print] + 1) / 2),
-                                    iter_counter.total_steps_so_far)
-                ts_writer.add_image('train/desired_mask',
-                                    make_grid((data_i['neg_cropped_mask'][:num_print] + 1) / 2),
-                                    iter_counter.total_steps_so_far)
+            ts_writer.add_image(
+                "train/original_cropped",
+                make_grid((data_i[input_name][:num_print] + 1) / 2),
+                iter_counter.total_steps_so_far,
+            )
+            if opt.model == "arrangeskipconn":
+                ts_writer.add_image(
+                    "train/positive_input",
+                    make_grid(
+                        (data_i["pos_cropped_normalized_cxr"][:num_print] + 1) / 2
+                    ),
+                    iter_counter.total_steps_so_far,
+                )
+                ts_writer.add_image(
+                    "train/desired_mask",
+                    make_grid((data_i["neg_cropped_mask"][:num_print] + 1) / 2),
+                    iter_counter.total_steps_so_far,
+                )
 
-            infer_out,inp = trainer.model.forward(data_i, mode='inference')
-            vis = (make_grid(inp[:num_print])+1)/2
-            ts_writer.add_image('train/infer_in',
-                                    vis,
-                                    iter_counter.total_steps_so_far)
-            vis = (make_grid(infer_out[:num_print])+1)/2
-            vis = torch.clamp(vis, 0,1)
-            ts_writer.add_image('train/infer_out',
-                    vis,
-                    iter_counter.total_steps_so_far)
+            infer_out, inp = trainer.model.forward(data_i, mode="inference")
+            vis = (make_grid(inp[:num_print]) + 1) / 2
+            ts_writer.add_image("train/infer_in", vis, iter_counter.total_steps_so_far)
+            vis = (make_grid(infer_out[:num_print]) + 1) / 2
+            vis = torch.clamp(vis, 0, 1)
+            ts_writer.add_image("train/infer_out", vis, iter_counter.total_steps_so_far)
             generated = trainer.get_latest_generated()
-            for k,v in generated.items():
+            for k, v in generated.items():
                 if v is None:
                     continue
-                if 'label' in k:
-                    vis = make_grid(v[:num_print].expand(-1,3,-1,-1))[0]
-                    writer.add_single_label(k,
-                            vis,
-                            iter_counter.total_steps_so_far)
+                if "label" in k:
+                    vis = make_grid(v[:num_print].expand(-1, 3, -1, -1))[0]
+                    writer.add_single_label(k, vis, iter_counter.total_steps_so_far)
                 else:
                     if v.size(1) == 3:
-                        vis = (make_grid(v[:num_print])+1)/2
-                        vis = torch.clamp(vis, 0,1)
+                        vis = (make_grid(v[:num_print]) + 1) / 2
+                        vis = torch.clamp(vis, 0, 1)
                     else:
                         vis = make_grid(v[:num_print])
-                    writer.add_single_image(k,
-                            vis,
-                            iter_counter.total_steps_so_far)
+                    writer.add_single_image(k, vis, iter_counter.total_steps_so_far)
         if iter_counter.needs_validation():
-            print('saving the latest model (epoch %d, total_steps %d)' %
-                  (epoch, iter_counter.total_steps_so_far))
-            trainer.save('epoch%d_step%d'%
-                    (epoch, iter_counter.total_steps_so_far))
-            trainer.save('latest')
+            print(
+                "saving the latest model (epoch %d, total_steps %d)"
+                % (epoch, iter_counter.total_steps_so_far)
+            )
+            trainer.save("epoch%d_step%d" % (epoch, iter_counter.total_steps_so_far))
+            trainer.save("latest")
             iter_counter.record_current_iter()
 
             print("doing validation")
@@ -129,22 +136,24 @@ for epoch in iter_counter.training_epochs():
             psnr_total = 0
             for ii, data_ii in enumerate(dataloader_val):
                 with torch.no_grad():
-                    generated,_ = model(data_ii, mode='inference')
+                    generated, _ = model(data_ii, mode="inference")
                     generated = generated.cpu()
-                generated = (generated+1)/2*255
+                generated = (generated + 1) / 2 * 255
                 gt = data_ii[input_name]
                 bsize, c, h, w = gt.shape
-                gt = (gt+1)/2*255
-                mse = ((generated-gt)**2).sum(3).sum(2).sum(1)
-                mse /= (c*h*w)
-                psnr = 10*torch.log10(255.0*255.0 / (mse+1e-8))
+                gt = (gt + 1) / 2 * 255
+                mse = ((generated - gt) ** 2).sum(3).sum(2).sum(1)
+                mse /= c * h * w
+                psnr = 10 * torch.log10(255.0 * 255.0 / (mse + 1e-8))
                 psnr_total += psnr.sum().item()
                 num += bsize
             psnr_total /= num
-            ts_writer.add_scalar("val/psnr", psnr_total, iter_counter.total_steps_so_far)
+            ts_writer.add_scalar(
+                "val/psnr", psnr_total, iter_counter.total_steps_so_far
+            )
             model.train()
     trainer.update_learning_rate(epoch)
     iter_counter.record_epoch_end()
-    trainer.save('latest')
+    trainer.save("latest")
 
-print('Training was successfully finished.')
+print("Training was successfully finished.")

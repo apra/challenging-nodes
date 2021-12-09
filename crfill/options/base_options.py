@@ -13,57 +13,122 @@ import data
 import pickle
 
 
-class BaseOptions():
+class BaseOptions:
     def __init__(self):
         self.initialized = False
         self.isTrain = False
 
     def initialize(self, parser):
         # default options
-        parser.add_argument('--default_opt_file', type=str, default=None, help='path tot default option file.')
+        parser.add_argument(
+            "--default_opt_file",
+            type=str,
+            default=None,
+            help="path tot default option file.",
+        )
 
         # experiment specifics
-        parser.add_argument('--name', type=str, default='label2coco',
-                            help='name of the experiment. It decides where to store samples and models')
+        parser.add_argument(
+            "--name",
+            type=str,
+            default="label2coco",
+            help="name of the experiment. It decides where to store samples and models",
+        )
 
-        parser.add_argument('--gpu_ids', type=str, default='0', help='gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU')
-        parser.add_argument('--checkpoints_dir', type=str, default='./checkpoints', help='models are saved here')
-        parser.add_argument('--model', type=str, default='pix2pix', help='which model to use')
-        parser.add_argument('--phase', type=str, default='train', help='train, val, test, etc')
-        parser.add_argument('--seed', type=int, default=0, help='Set the seed for the whole project')
+        parser.add_argument(
+            "--gpu_ids",
+            type=str,
+            default="0",
+            help="gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU",
+        )
+        parser.add_argument(
+            "--checkpoints_dir",
+            type=str,
+            default="./checkpoints",
+            help="models are saved here",
+        )
+        parser.add_argument(
+            "--model", type=str, default="pix2pix", help="which model to use"
+        )
+        parser.add_argument(
+            "--phase", type=str, default="train", help="train, val, test, etc"
+        )
+        parser.add_argument(
+            "--seed", type=int, default=0, help="Set the seed for the whole project"
+        )
 
         # input/output sizes
-        parser.add_argument('--batchSize', type=int, default=1, help='input batch size')
-        parser.add_argument('--preprocess_mode', type=str, default='scale_width_and_crop',
-                            help='scaling and cropping of images at load time.', choices=(
-            "resize_and_crop", "crop", "scale_width", "scale_width_and_crop", "scale_shortside",
-            "scale_shortside_and_crop", "fixed", "none"))
-        parser.add_argument('--load_size', type=int, default=1024,
-                            help='Scale images to this size. The final image will be cropped to --crop_size.')
-        parser.add_argument('--crop_size', type=int, default=512,
-                            help='Crop to the width of crop_size (after initially scaling the images to load_size.)')
-        parser.add_argument('--aspect_ratio', type=float, default=1.0,
-                            help='The ratio width/height. The final height of the load image will be crop_size/aspect_ratio')
+        parser.add_argument("--batchSize", type=int, default=1, help="input batch size")
+        parser.add_argument(
+            "--preprocess_mode",
+            type=str,
+            default="scale_width_and_crop",
+            help="scaling and cropping of images at load time.",
+            choices=(
+                "resize_and_crop",
+                "crop",
+                "scale_width",
+                "scale_width_and_crop",
+                "scale_shortside",
+                "scale_shortside_and_crop",
+                "fixed",
+                "none",
+            ),
+        )
+        parser.add_argument(
+            "--load_size",
+            type=int,
+            default=1024,
+            help="Scale images to this size. The final image will be cropped to --crop_size.",
+        )
+        parser.add_argument(
+            "--crop_size",
+            type=int,
+            default=512,
+            help="Crop to the width of crop_size (after initially scaling the images to load_size.)",
+        )
+        parser.add_argument(
+            "--aspect_ratio",
+            type=float,
+            default=1.0,
+            help="The ratio width/height. The final height of the load image will be crop_size/aspect_ratio",
+        )
 
         # for setting inputs
-        parser.add_argument('--num_workers', default=0, type=int, help='# threads for loading data')
+        parser.add_argument(
+            "--num_workers", default=0, type=int, help="# threads for loading data"
+        )
 
         # for displays
-        parser.add_argument('--display_winsize', type=int, default=400, help='display window size')
+        parser.add_argument(
+            "--display_winsize", type=int, default=400, help="display window size"
+        )
 
         # for generator
-        parser.add_argument('--netG', type=str, default='spade',
-                            help='selects model to use for netG (pix2pixhd | spade)')
-        parser.add_argument('--init_type', type=str, default='xavier',
-                            help='network initialization [normal|xavier|kaiming|orthogonal]')
-        parser.add_argument('--init_variance', type=float, default=0.02,
-                            help='variance of the initialization distribution')
+        parser.add_argument(
+            "--netG",
+            type=str,
+            default="spade",
+            help="selects model to use for netG (pix2pixhd | spade)",
+        )
+        parser.add_argument(
+            "--init_type",
+            type=str,
+            default="xavier",
+            help="network initialization [normal|xavier|kaiming|orthogonal]",
+        )
+        parser.add_argument(
+            "--init_variance",
+            type=float,
+            default=0.02,
+            help="variance of the initialization distribution",
+        )
 
         # for instance-wise features
         # I added
-        parser.add_argument('--norm_type', type=int, default=1, help='1:my bug, 2:org')
-        parser.add_argument('--use_th', action='store_true', help='th or th boundary')
-        parser.add_argument('--th', type=float, default=0.5, help='1:my bug, 2:org')
+        parser.add_argument("--norm_type", type=int, default=1, help="1:my bug, 2:org")
+        parser.add_argument("--use_th", action="store_true", help="th or th boundary")
+        parser.add_argument("--th", type=float, default=0.5, help="1:my bug, 2:org")
 
         self.initialized = True
         return parser
@@ -72,7 +137,8 @@ class BaseOptions():
         # initialize parser with basic options
         if not self.initialized:
             parser = argparse.ArgumentParser(
-                formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+                formatter_class=argparse.ArgumentDefaultsHelpFormatter
+            )
             parser = self.initialize(parser)
 
         # get the basic options
@@ -116,35 +182,35 @@ class BaseOptions():
         return opt
 
     def print_options(self, opt):
-        message = ''
-        message += '----------------- Options ---------------\n'
+        message = ""
+        message += "----------------- Options ---------------\n"
         for k, v in sorted(vars(opt).items()):
-            comment = ''
+            comment = ""
             default = self.parser.get_default(k)
             if v != default:
-                comment = '\t[default: %s]' % str(default)
-            message += '{:>25}: {:<30}{}\n'.format(str(k), str(v), comment)
-        message += '----------------- End -------------------'
+                comment = "\t[default: %s]" % str(default)
+            message += "{:>25}: {:<30}{}\n".format(str(k), str(v), comment)
+        message += "----------------- End -------------------"
         print(message)
 
     def option_file_path(self, opt, makedir=False):
         expr_dir = os.path.join(opt.checkpoints_dir, opt.name)
         if makedir:
             util.mkdirs(expr_dir)
-        file_name = os.path.join(expr_dir, 'opt')
+        file_name = os.path.join(expr_dir, "opt")
         return file_name
 
     def save_options(self, opt):
         file_name = self.option_file_path(opt, makedir=True)
-        with open(file_name + '.txt', 'wt') as opt_file:
+        with open(file_name + ".txt", "wt") as opt_file:
             for k, v in sorted(vars(opt).items()):
-                comment = ''
+                comment = ""
                 default = self.parser.get_default(k)
                 if v != default:
-                    comment = '\t[default: %s]' % str(default)
-                opt_file.write('{:>25}: {:<30}{}\n'.format(str(k), str(v), comment))
+                    comment = "\t[default: %s]" % str(default)
+                opt_file.write("{:>25}: {:<30}{}\n".format(str(k), str(v), comment))
 
-        with open(file_name + '.pkl', 'wb') as opt_file:
+        with open(file_name + ".pkl", "wb") as opt_file:
             pickle.dump(opt, opt_file)
 
     def update_options_from_file(self, parser, opt):
@@ -157,12 +223,12 @@ class BaseOptions():
 
     def load_options(self, opt):
         file_name = self.option_file_path(opt, makedir=False)
-        new_opt = pickle.load(open(file_name + '.pkl', 'rb'))
+        new_opt = pickle.load(open(file_name + ".pkl", "rb"))
         return new_opt
 
     def load_default(self, filepath):
-        """ Loads a pickle file with default options inside."""
-        new_opt = pickle.load(open(filepath, 'rb'))
+        """Loads a pickle file with default options inside."""
+        new_opt = pickle.load(open(filepath, "rb"))
         return new_opt
 
     def parse(self, save=False):
@@ -175,7 +241,7 @@ class BaseOptions():
             self.save_options(opt)
 
         # set gpu ids
-        str_ids = opt.gpu_ids.split(',')
+        str_ids = opt.gpu_ids.split(",")
         opt.gpu_ids = []
         for str_id in str_ids:
             id = int(str_id)
@@ -184,9 +250,12 @@ class BaseOptions():
         if len(opt.gpu_ids) > 0:
             torch.cuda.set_device(opt.gpu_ids[0])
 
-        assert len(opt.gpu_ids) == 0 or opt.batchSize % len(opt.gpu_ids) == 0, \
-            "Batch size %d is wrong. It must be a multiple of # GPUs %d." \
-            % (opt.batchSize, len(opt.gpu_ids))
+        assert (
+            len(opt.gpu_ids) == 0 or opt.batchSize % len(opt.gpu_ids) == 0
+        ), "Batch size %d is wrong. It must be a multiple of # GPUs %d." % (
+            opt.batchSize,
+            len(opt.gpu_ids),
+        )
 
         self.opt = opt
         return self.opt

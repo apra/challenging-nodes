@@ -13,41 +13,59 @@ class InpaintdoublediscModel(torch.nn.Module):
     @staticmethod
     def modify_commandline_options(parser, is_train):
         networks.modify_commandline_options(parser, is_train)
-        parser.add_argument('--path_objectshape_base', type=str, default='', help='path obj base')
-        parser.add_argument('--path_objectshape_list', type=str, default='', help='path obj list')
-        parser.add_argument('--update_part', type=str, default='all', help='update part')
-        parser.add_argument('--d_mask_in', action='store_true', help='if specified, d mask in')
-        parser.add_argument('--no_fine_loss', action='store_true',
-                            help='if specified, do *not* use refinementstageloss')
-        parser.add_argument('--load_pretrained_g', type=str, required=False, help='load pt g')
-        parser.add_argument('--load_pretrained_d', type=str, required=False, help='load pt d')
-        parser.add_argument('--fastercnn_loc', default='models/fasterrcnn.pth', help='location of the fasterrcnn.pth')
+        parser.add_argument(
+            "--path_objectshape_base", type=str, default="", help="path obj base"
+        )
+        parser.add_argument(
+            "--path_objectshape_list", type=str, default="", help="path obj list"
+        )
+        parser.add_argument(
+            "--update_part", type=str, default="all", help="update part"
+        )
+        parser.add_argument(
+            "--d_mask_in", action="store_true", help="if specified, d mask in"
+        )
+        parser.add_argument(
+            "--no_fine_loss",
+            action="store_true",
+            help="if specified, do *not* use refinementstageloss",
+        )
+        parser.add_argument(
+            "--load_pretrained_g", type=str, required=False, help="load pt g"
+        )
+        parser.add_argument(
+            "--load_pretrained_d", type=str, required=False, help="load pt d"
+        )
+        parser.add_argument(
+            "--fastercnn_loc",
+            default="models/fasterrcnn.pth",
+            help="location of the fasterrcnn.pth",
+        )
         return parser
 
     def __init__(self, opt):
         super().__init__()
         self.opt = opt
 
-        self.FloatTensor = torch.cuda.FloatTensor if self.use_gpu() \
-            else torch.FloatTensor
-        self.ByteTensor = torch.cuda.ByteTensor if self.use_gpu() \
-            else torch.ByteTensor
+        self.FloatTensor = (
+            torch.cuda.FloatTensor if self.use_gpu() else torch.FloatTensor
+        )
+        self.ByteTensor = torch.cuda.ByteTensor if self.use_gpu() else torch.ByteTensor
 
         self.netG, self.netD, self.netDRCNN = self.initialize_networks(opt)
         if opt.isTrain and opt.load_pretrained_g is not None:
             print(f"looad {opt.load_pretrained_g}")
-            self.netG = util.load_network_path(
-                self.netG, opt.load_pretrained_g)
+            self.netG = util.load_network_path(self.netG, opt.load_pretrained_g)
         if opt.isTrain and opt.load_pretrained_d is not None:
             print(f"looad {opt.load_pretrained_d}")
-            self.netD = util.load_network_path(
-                self.netD, opt.load_pretrained_d)
+            self.netD = util.load_network_path(self.netD, opt.load_pretrained_d)
 
         # set loss functions
         if opt.isTrain:
             # self.mask_creator = MaskCreator(opt.path_objectshape_list, opt.path_objectshape_base)
             self.criterionGAN = networks.GANLoss(
-                opt.gan_mode, tensor=self.FloatTensor, opt=self.opt)
+                opt.gan_mode, tensor=self.FloatTensor, opt=self.opt
+            )
             self.criterionFeat = torch.nn.L1Loss()
             if opt.vgg_loss:
                 self.criterionVGG = networks.VGGLoss(self.opt.gpu_ids)
@@ -59,16 +77,16 @@ class InpaintdoublediscModel(torch.nn.Module):
     def forward(self, data, mode):
         inputs, real_image, mask = self.preprocess_input(data)
 
-        if mode == 'generator':
+        if mode == "generator":
             g_loss, coarse_image, composed_image = self.compute_generator_loss(
-                inputs, real_image, mask)
-            generated = {'coarse': coarse_image,
-                         'composed': composed_image}
+                inputs, real_image, mask
+            )
+            generated = {"coarse": coarse_image, "composed": composed_image}
             return g_loss, inputs, generated
-        elif mode == 'discriminator':
+        elif mode == "discriminator":
             d_loss = self.compute_discriminator_loss(inputs, real_image, mask)
-            return d_loss, data['inputs']
-        elif mode == 'inference':
+            return d_loss, data["inputs"]
+        elif mode == "inference":
             with torch.no_grad():
                 coarse_image, fake_image = self.generate_fake(inputs, real_image, mask)
                 composed_image = fake_image * mask + inputs * (1 - mask)
@@ -95,8 +113,8 @@ class InpaintdoublediscModel(torch.nn.Module):
         return optimizer_G, optimizer_D
 
     def save(self, epoch):
-        util.save_network(self.netG, 'G', epoch, self.opt)
-        util.save_network(self.netD, 'D', epoch, self.opt)
+        util.save_network(self.netG, "G", epoch, self.opt)
+        util.save_network(self.netD, "D", epoch, self.opt)
 
     ############################################################################
     # Private helper methods
@@ -112,10 +130,12 @@ class InpaintdoublediscModel(torch.nn.Module):
             netDRCNN = None
 
         if not opt.isTrain or opt.continue_train:
-            netG = util.load_network(netG, 'G', opt.which_epoch, opt)
+            netG = util.load_network(netG, "G", opt.which_epoch, opt)
             if opt.isTrain:
-                netD = util.load_network(netD, 'D', opt.which_epoch, opt)
-                raise NotImplementedError('Loading DRCNN for continuing training not implemented yet')
+                netD = util.load_network(netD, "D", opt.which_epoch, opt)
+                raise NotImplementedError(
+                    "Loading DRCNN for continuing training not implemented yet"
+                )
         return netG, netD, netDRCNN
 
     # preprocess the input, such as moving the tensors to GPUs and
@@ -144,28 +164,44 @@ class InpaintdoublediscModel(torch.nn.Module):
         #         data['mask'] = data['mask'].cuda()
         #     mask = data['mask']
         # move to GPU and change data types
-        #if self.use_gpu():  # this command is irrelevant, all data will already be at the GPU due to DataParallel in pix2pixtrainer
+        # if self.use_gpu():  # this command is irrelevant, all data will already be at the GPU due to DataParallel in pix2pixtrainer
         #    data['inputs'] = data['inputs'].cuda()
 
-        #return data['inputs'], data['real_image'], data['mask'], data['full_image'], data['full_image_crop_bbox'], data['full_image_bbox']
-        return data['neg_cropped_normalized_cxr'], data['pos_cropped_normalized_cxr'], data['neg_cropped_mask'], data['neg_cxr'], data['neg_crop_bbox'], data['neg_lesion_bbox']
+        # return data['inputs'], data['real_image'], data['mask'], data['full_image'], data['full_image_crop_bbox'], data['full_image_bbox']
+        return (
+            data["neg_cropped_normalized_cxr"],
+            data["pos_cropped_normalized_cxr"],
+            data["neg_cropped_mask"],
+            data["neg_cxr"],
+            data["neg_crop_bbox"],
+            data["neg_lesion_bbox"],
+        )
 
-    def g_image_loss(self, coarse_image, fake_image, composed_image, real_image, mask, composed_full_image, full_image_bbox):
+    def g_image_loss(
+        self,
+        coarse_image,
+        fake_image,
+        composed_image,
+        real_image,
+        mask,
+        composed_full_image,
+        full_image_bbox,
+    ):
         G_losses = {}
 
         # Faster RCNN loss -- For aux loss, composed_full_image and full_image_bbox will be passed as None
         if composed_full_image is not None:
             rcnn_losses = self.RCNN_loss(composed_full_image, full_image_bbox)
-            G_losses['RCNN'] = rcnn_losses
-            #G_losses['RCNN'] = self.criterionGAN(pred_rcnn, True, for_discriminator=False)
+            G_losses["RCNN"] = rcnn_losses
+            # G_losses['RCNN'] = self.criterionGAN(pred_rcnn, True, for_discriminator=False)
 
         # 'Normal' Adversarial
         if not self.opt.no_gan_loss and not self.opt.no_fine_loss:
-            pred_fake, pred_real = self.discriminate(
-                composed_image, real_image, mask)
+            pred_fake, pred_real = self.discriminate(composed_image, real_image, mask)
 
-            G_losses['GAN'] = self.criterionGAN(pred_fake, True,
-                                                for_discriminator=False)
+            G_losses["GAN"] = self.criterionGAN(
+                pred_fake, True, for_discriminator=False
+            )
 
         # if not self.opt.no_ganFeat_loss:
         #     raise NotImplementedError
@@ -182,22 +218,29 @@ class InpaintdoublediscModel(torch.nn.Module):
         #     # G_losses['GAN_Feat'] = GAN_Feat_loss
 
         if self.opt.vgg_loss and not self.opt.no_fine_loss:
-            G_losses['VGG'] = self.criterionVGG(fake_image, real_image) \
-                              * self.opt.lambda_vgg
+            G_losses["VGG"] = (
+                self.criterionVGG(fake_image, real_image) * self.opt.lambda_vgg
+            )
         if not self.opt.no_l1_loss:
             if coarse_image is not None:
-                G_losses['L1_coarse'] = torch.nn.functional.l1_loss(coarse_image, fake_image) * self.opt.beta_l1
+                G_losses["L1_coarse"] = (
+                    torch.nn.functional.l1_loss(coarse_image, fake_image)
+                    * self.opt.beta_l1
+                )
             if not self.opt.no_fine_loss:
-                G_losses['L1_fine'] = torch.nn.functional.l1_loss(fake_image, real_image) * 0 # this one is now void -- real image is unrelated to fake_image
+                G_losses["L1_fine"] = (
+                    torch.nn.functional.l1_loss(fake_image, real_image) * 0
+                )  # this one is now void -- real image is unrelated to fake_image
         return G_losses
 
     def compute_generator_loss(self, inputs, real_image, mask):
 
-        coarse_image, fake_image = self.generate_fake(
-            inputs, real_image, mask)
+        coarse_image, fake_image = self.generate_fake(inputs, real_image, mask)
 
         composed_image = fake_image * mask + inputs * (1 - mask)
-        G_losses = self.g_image_loss(coarse_image, fake_image, composed_image, real_image, mask)
+        G_losses = self.g_image_loss(
+            coarse_image, fake_image, composed_image, real_image, mask
+        )
 
         return G_losses, coarse_image, composed_image
 
@@ -210,13 +253,14 @@ class InpaintdoublediscModel(torch.nn.Module):
                 fake_image.requires_grad_()
                 composed_image = fake_image * mask + inputs * (1 - mask)
 
-            pred_fake, pred_real = self.discriminate(
-                composed_image, real_image, mask)
+            pred_fake, pred_real = self.discriminate(composed_image, real_image, mask)
 
-            D_losses['D_Fake'] = self.criterionGAN(pred_fake, False,
-                                                   for_discriminator=True)
-            D_losses['D_real'] = self.criterionGAN(pred_real, True,
-                                                   for_discriminator=True)
+            D_losses["D_Fake"] = self.criterionGAN(
+                pred_fake, False, for_discriminator=True
+            )
+            D_losses["D_real"] = self.criterionGAN(
+                pred_real, True, for_discriminator=True
+            )
 
         return D_losses
 
@@ -248,8 +292,10 @@ class InpaintdoublediscModel(torch.nn.Module):
         return pred_fake, pred_real
 
     def RCNN_loss(self, composed_image, ground_truth_bbox):
-        targets = [{'boxes': torch.unsqueeze(bbox, 0),
-                    'labels': torch.LongTensor([1]).cuda()} for bbox in ground_truth_bbox]  # label=1 for tumor class
+        targets = [
+            {"boxes": torch.unsqueeze(bbox, 0), "labels": torch.LongTensor([1]).cuda()}
+            for bbox in ground_truth_bbox
+        ]  # label=1 for tumor class
         loss_dict = self.netDRCNN(composed_image, targets)
 
         _loss_sum = 0
@@ -268,11 +314,11 @@ class InpaintdoublediscModel(torch.nn.Module):
             fake = []
             real = []
             for p in pred:
-                fake.append([tensor[:tensor.size(0) // 2] for tensor in p])
-                real.append([tensor[tensor.size(0) // 2:] for tensor in p])
+                fake.append([tensor[: tensor.size(0) // 2] for tensor in p])
+                real.append([tensor[tensor.size(0) // 2 :] for tensor in p])
         else:
-            fake = pred[:pred.size(0) // 2]
-            real = pred[pred.size(0) // 2:]
+            fake = pred[: pred.size(0) // 2]
+            real = pred[pred.size(0) // 2 :]
 
         return fake, real
 

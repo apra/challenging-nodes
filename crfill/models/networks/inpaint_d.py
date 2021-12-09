@@ -15,13 +15,12 @@ class DeepFillDiscriminator(BaseNetwork):
         super(DeepFillDiscriminator, self).__init__()
         cnum = 64
         self.img_channels = 1
-        self.conv1 = nn.utils.spectral_norm(dis_conv(self.img_channels+1, cnum))
-        self.conv2 = nn.utils.spectral_norm(dis_conv(cnum, cnum*2))
-        self.conv3 = nn.utils.spectral_norm(dis_conv(cnum*2, cnum*4))
-        self.conv4 = nn.utils.spectral_norm(dis_conv(cnum*4, cnum*4))
-        self.conv5 = nn.utils.spectral_norm(dis_conv(cnum*4, cnum*4))
-        self.conv6 = nn.utils.spectral_norm(dis_conv(cnum*4, cnum*4))
-
+        self.conv1 = nn.utils.spectral_norm(dis_conv(self.img_channels + 1, cnum))
+        self.conv2 = nn.utils.spectral_norm(dis_conv(cnum, cnum * 2))
+        self.conv3 = nn.utils.spectral_norm(dis_conv(cnum * 2, cnum * 4))
+        self.conv4 = nn.utils.spectral_norm(dis_conv(cnum * 4, cnum * 4))
+        self.conv5 = nn.utils.spectral_norm(dis_conv(cnum * 4, cnum * 4))
+        self.conv6 = nn.utils.spectral_norm(dis_conv(cnum * 4, cnum * 4))
 
     def forward(self, x, mask=None):
         bsize, ch, height, width = x.shape
@@ -42,10 +41,14 @@ class DeepFillDiscriminator(BaseNetwork):
 class FasterRCNNDiscriminator(BaseNetwork):
     def __init__(self, opt):
         super(FasterRCNNDiscriminator, self).__init__()
-        self.fastercnn_model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=False, pretrained_backbone=False)
+        self.fastercnn_model = torchvision.models.detection.fasterrcnn_resnet50_fpn(
+            pretrained=False, pretrained_backbone=False
+        )
         num_classes = 2
         in_features = self.fastercnn_model.roi_heads.box_predictor.cls_score.in_features
-        self.fastercnn_model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
+        self.fastercnn_model.roi_heads.box_predictor = FastRCNNPredictor(
+            in_features, num_classes
+        )
 
     def forward(self, images, targets):
         output = self.fastercnn_model(images, targets)
