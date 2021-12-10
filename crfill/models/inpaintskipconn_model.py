@@ -216,7 +216,7 @@ class InpaintskipconnModel(torch.nn.Module):
 
     def place_addition_on_cxr(self, addition, starting_cxr, mask):
         if not self.opt.no_sharp_skip_connection:
-            return (addition + starting_cxr) * mask + starting_cxr * (1 - mask)
+            return (starting_cxr*torch.exp(addition)) * mask + starting_cxr * (1 - mask)
 
     def compute_generator_loss(
         self, negative, positive, mask, crop_bbox, lesion_bbox, cxr
