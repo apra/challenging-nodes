@@ -1,10 +1,45 @@
 import numpy as np
 from data.bbox import crop_to_bbox
+import cv2
+import matplotlib.pyplot as plt
 
 
-def mask_image(image: np.ndarray, mask_bbox, mask_value=1):
+def k_means_image(image: np.ndarray, mask_bbox, mask_value=1, clusters=3):
+    [x, y, w, h] = mask_convention_setter(mask_bbox, invert=True)
+    mask_image = image[y:y + h, x:x + w].copy()
+    mask_image_ref = image.copy()
+    mask_image *= 255.
+    im = mask_image.reshape((-1, 1))
+    imf = np.float32(im)
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+    K = clusters
+    attempts = 1
+    ret, label, center = cv2.kmeans(imf, K, None, criteria, attempts, cv2.KMEANS_PP_CENTERS)
+    center = np.uint8(center)
+    res = center[label.flatten()]
+    res2 = res.reshape((mask_image.shape))
+    ref_values = np.unique(res2)
+
+    res2 = np.float32(res2)
+    update_value = 0.
+    for value in ref_values:
+        res2[res2==value] = update_value
+        update_value += 0.25
+
+    mask_image_ref[y:y + h, x:x + w] = res2
+    mask_array = np.zeros((1, *image.shape))
+    mask_array[:, y:y + h, x:x + w] = mask_value
+
+    return mask_image_ref, mask_array
+
+
+def mask_image(image: np.ndarray, mask_bbox, mask_value=1, randomized_mask=False, rng=None):
     [x, y, w, h] = mask_convention_setter(mask_bbox, invert=True)  # makes sure bbox is [x,y,w,h]
     mask_image = image.copy()
+    if randomized_mask:
+        if rng is None:
+            rng = np.random.default_rng()
+        mask_value = rng.random((h, w))
     mask_image[y:y+h, x:x+w] = mask_value
     mask_array = np.zeros((1, *image.shape))
     mask_array[:, y:y+h, x:x+w] = mask_value

@@ -79,6 +79,7 @@ class Pix2PixTrainer():
     ##################################################################
 
     def update_learning_rate(self, epoch):
+        print('decaying lr')
         if epoch > self.opt.niter:
             lrd = self.opt.lr / self.opt.niter_decay
             new_lr = self.old_lr - lrd

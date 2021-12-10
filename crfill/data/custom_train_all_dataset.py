@@ -38,11 +38,12 @@ class CustomTrainAllDataset(BaseDataset):
         self.opt = opt
         self.rng = np.random.default_rng(seed=opt.seed)
         self.mod = mod
-        positive_paths,negative_paths = paths
+        positive_paths, negative_paths = paths
         if len(negative_paths) < len(positive_paths):
-            print("There are more negative samples than positive ones.")
+            print("There are more positive samples than negative ones.")
             positive_paths = positive_paths[:len(negative_paths)]
         else:
+            print("There are more negative paths than positive ones.")
             negative_paths = negative_paths[:len(positive_paths)]
 
         self.positive_paths = positive_paths

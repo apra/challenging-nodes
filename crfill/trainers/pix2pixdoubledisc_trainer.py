@@ -80,6 +80,7 @@ class Pix2PixDoubleDiscTrainer():
 
     def update_learning_rate(self, epoch):
         if epoch > self.opt.niter:
+            print("decaying learning rate")
             lrd = self.opt.lr / self.opt.niter_decay
             new_lr = self.old_lr - lrd
         else:

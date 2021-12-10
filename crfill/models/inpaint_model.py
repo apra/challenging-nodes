@@ -147,6 +147,7 @@ class InpaintModel(torch.nn.Module):
     def g_image_loss(self, coarse_image, fake_image, composed_image, real_image, mask):
         G_losses = {}
 
+
         if not self.opt.no_gan_loss and not self.opt.no_fine_loss:
             pred_fake, pred_real = self.discriminate(
                 composed_image, real_image, mask)  # real image should be positive sample
@@ -176,6 +177,11 @@ class InpaintModel(torch.nn.Module):
                 G_losses['L1_coarse'] = torch.nn.functional.l1_loss(coarse_image, real_image) * self.opt.beta_l1
             if not self.opt.no_fine_loss:
                 G_losses['L1_fine'] = torch.nn.functional.l1_loss(fake_image, real_image) * self.opt.beta_l1
+            if self.opt.ssim_loss:
+                #print(fake_image.device)
+                data_range = self.FloatTensor(1).fill_(real_image.max())
+                G_losses['SSIM'] = networks.SSIMLoss().to(real_image.device)(fake_image, real_image, data_range)
+
         return G_losses
 
     def compute_generator_loss(self, inputs, real_image, mask):
