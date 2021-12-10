@@ -24,6 +24,8 @@ BETAL1_1=$1
 #Lambda for the first task
 LAMBDA_1=$2
 
+DISCWEIGHT=$3
+
 NUM_WORKERS=5
 
 LOGGING_DIR="$HOME/challenging-nodes/crfill/checkpoints"
@@ -32,9 +34,9 @@ LOGGING_DIR="$HOME/challenging-nodes/crfill/checkpoints"
 mkdir -p "$DATA"
 cp -ra $HOME/data/. "$DATA"
 
-NAME="$EXPERIMENT_NAME""$DATE""-beta_l$BETAL1_1-lambda_feat$LAMBDA_1"
+NAME="$EXPERIMENT_NAME""$DATE""-beta_l$BETAL1_1-lambda_feat$LAMBDA_1-disc$DISCWEIGHT"
 
-STANDARD_PARAMS="--seed 0 --lr 0.0002 --batchSize 32 --niter_decay 8 --include_chexpert --include_mimic --node21_resample_count 10 --dataset_mode_train custom_train_all --dataset_mode custom_train --train_image_dir /data --netG twostagend --netD deepfill --preprocess_mode none --validation_freq 20000 --niter 43 --display_freq 5000 --model arrangeskipconn"
+STANDARD_PARAMS="--seed 0 --lr 0.0002 --discriminator_weight $DISCWEIGHT --batchSize 32 --niter_decay 8 --include_chexpert --include_mimic --node21_resample_count 10 --dataset_mode_train custom_train_all --dataset_mode custom_train --train_image_dir /data --netG twostagend --netD deepfill --preprocess_mode none --validation_freq 20000 --niter 43 --display_freq 5000 --model arrangeskipconn"
 
 COMMAND="python -u $TRAINING_SCRIPT --name $NAME --num_workers $NUM_WORKERS --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids 0,1,2,3 --beta_l1 $BETAL1_1 --lambda_ref $LAMBDA_1 $STANDARD_PARAMS"
 
