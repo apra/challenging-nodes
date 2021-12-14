@@ -122,7 +122,11 @@ class CustomTrainAllDataset(BaseDataset):
 
             neg_cropped_masked_cxr, neg_cropped_mask = mask_image(neg_cropped_cxr, neg_cropped_lesion_bbox)
 
+            #old
             neg_cropped_normalized_cxr = self.transform(neg_cropped_cxr)
+
+            #new
+            neg_cropped_normalized_masked_cxr = self.transform(neg_cropped_masked_cxr)
 
             neg_cxr = torch.unsqueeze(torch.Tensor(neg_cxr), 0)
 
@@ -133,8 +137,10 @@ class CustomTrainAllDataset(BaseDataset):
                 'neg_cxr': neg_cxr.float(),
                 # cropped and normalized (between -0.5 and 0.5) CXR of the positive sample (input to the discriminator)
                 'pos_cropped_normalized_cxr': pos_cropped_normalized_cxr.float(),
-                # cropped and normalized (between -0.5 and 0.5) CXR of the negative sample (input to the generator)
+                # cropped and normalized (between -0.5 and 0.5) CXR of the negative sample (real_image)
                 'neg_cropped_normalized_cxr': neg_cropped_normalized_cxr.float(),
+                # masked neg crop: (input gen)
+                'neg_cropped_normalized_masked_cxr': neg_cropped_normalized_masked_cxr.float(),
                 # array with the [x,y,w,h] of the cropping bounding box in the negative sample (used for placing result)
                 'neg_crop_bbox': torch.Tensor(neg_crop_bbox),
                 # mask used to select the region where the tumor should be placed by the generator

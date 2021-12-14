@@ -61,16 +61,18 @@ def create_dataloader_trainval(opt):
     if opt.model == 'arrange':
         paths_and_nodules = get_paths_and_nodules(opt.train_image_dir, opt.include_chexpert,
                                               opt.include_mimic, opt.node21_resample_count)
-    elif opt.model == 'arrangedoubledisc' or opt.model == 'arrangeskipconn':
+    elif opt.model == 'arrangeskipconn':
         paths_positive = get_paths_and_nodules(opt.train_image_dir, opt.include_chexpert,
                                               opt.include_mimic, opt.node21_resample_count)
         paths_negative = get_paths_negatives(opt.train_image_dir)
         paths_and_nodules = [paths_positive, paths_negative]
+    elif opt.model == 'arrangedoubledisc':
+        paths_and_nodules = get_paths_and_nodules(opt.train_image_dir, opt.include_chexpert,
+                                              opt.include_mimic, opt.node21_resample_count)
     else:
         raise ValueError(f'Unrecognized model name: {opt.model}')
     dataset = find_dataset_using_name(opt.dataset_mode_train)
     instance = dataset()
-    print(dataset)
     instance.initialize(opt, paths_and_nodules, 'train')
     print("dataset [%s] of size %d was created" %
           (type(instance).__name__, len(instance)))

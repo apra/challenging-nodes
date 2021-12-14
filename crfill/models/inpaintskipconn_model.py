@@ -123,7 +123,6 @@ class InpaintskipconnModel(torch.nn.Module):
     # |data|: dictionary of the input data
 
     def preprocess_input(self, data):
-        # TODO change infrastructure such that we can obtain positive images for the discriminator and negative for generator
         # b,c,h,w = data['image'].shape
         # if self.opt.isTrain:
         #     # generate random stroke mask
@@ -151,7 +150,7 @@ class InpaintskipconnModel(torch.nn.Module):
             data['pos_cropped_normalized_cxr'] = data['pos_cropped_normalized_cxr'].cuda()
             data['neg_cropped_mask'] = data['neg_cropped_mask'].cuda()
 
-        return data['neg_cropped_normalized_cxr'], data['pos_cropped_normalized_cxr'], data['neg_cropped_mask'], data['neg_crop_bbox'], data['neg_lesion_bbox'], data['neg_cxr']
+        return data['neg_cropped_normalized_cxr'], data['pos_cropped_normalized_cxr'], data['neg_cropped_mask'], data['neg_crop_bbox'], data['neg_lesion_bbox'], data['neg_cxr'], data['neg_cropped_normalized_masked_cxr']
 
     def g_image_loss(self, coarse_image, negative, composed_image, positive, mask, composed_full_image, full_image_bbox):
         G_losses = {}
@@ -176,6 +175,10 @@ class InpaintskipconnModel(torch.nn.Module):
                 G_losses['L1_coarse'] = torch.nn.functional.l1_loss(coarse_image, negative) * self.opt.beta_l1
             if not self.opt.no_fine_loss:
                 G_losses['L1_fine'] = torch.nn.functional.l1_loss(composed_image, negative) * self.opt.beta_l1
+        if self.opt.ssim_loss:
+            #print(fake_image.device)
+            data_range = self.FloatTensor(1).fill_(composed_image.max())
+            G_losses['SSIM'] = networks.SSIMLoss().to(composed_image.device)(composed_image, negative, data_range) * self.opt.lambda_ssim
         return G_losses
 
     def place_addition_on_cxr(self, addition, starting_cxr, mask):

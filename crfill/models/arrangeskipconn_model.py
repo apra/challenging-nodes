@@ -2,6 +2,7 @@ import pdb
 import torch
 from models.inpaintskipconn_model import InpaintskipconnModel
 import util.util as util
+from copy import deepcopy
 
 
 class ArrangeskipconnModel(InpaintskipconnModel):
@@ -21,12 +22,16 @@ class ArrangeskipconnModel(InpaintskipconnModel):
             self.netD_aux = util.load_network(self.netD_aux, 'D_aux', opt.which_epoch, opt)
         if opt.load_base_g is not None:
             print(f"looad {opt.load_base_g}")
-            self.netG.baseg = util.load_network_path(
-                self.netG.baseg, opt.load_base_g)
+            self.netG = util.load_network_path(
+                self.netG, opt.load_base_g)
         if opt.load_base_d is not None:
             print(f"looad {opt.load_base_d}")
             self.netD = util.load_network_path(
                 self.netD, opt.load_base_d)
+            print("loading aux")
+            aux_path = str(opt.load_base_d)[:-4] + '_aux.pth'
+            self.netD_aux = util.load_network_path(
+                self.netD_aux, aux_path)
 
     def save(self, epoch):
         util.save_network(self.netG, 'G', epoch, self.opt)
@@ -55,12 +60,12 @@ class ArrangeskipconnModel(InpaintskipconnModel):
         return optimizer_G, optimizer_D, optimizer_DRCNN
 
     def forward(self, data, mode):
-        negative, positive, mask, crop_bbox, lesion_bbox, cxr = self.preprocess_input(data)
+        negative, positive, mask, crop_bbox, lesion_bbox, cxr, negative_masked = self.preprocess_input(data)
 
         if mode == 'generator':
             g_loss, composed_image, composed_image_aux, recon_aux = self.compute_generator_loss(negative, positive,
                                                                                                 mask, crop_bbox,
-                                                                                                lesion_bbox, cxr)
+                                                                                                lesion_bbox, cxr, negative_masked)
             generated = {
                 'composed': composed_image,
                 'composed_aux': composed_image_aux,
@@ -68,14 +73,14 @@ class ArrangeskipconnModel(InpaintskipconnModel):
             }
             return g_loss, negative, generated
         elif mode == 'discriminator':
-            d_loss = self.compute_discriminator_loss(negative, positive, mask)
+            d_loss = self.compute_discriminator_loss(negative, positive, mask, negative_masked)
             return d_loss, negative
         elif mode == 'inference':
             with torch.no_grad():
                 coarse_image, fake_image, aux_image, recon_aux = self.generate_fake(
-                    negative, mask)
+                    negative_masked, mask)
                 composed_image = self.place_addition_on_cxr(fake_image, negative, mask)
-            return composed_image, negative
+            return composed_image, negative_masked
         else:
             raise ValueError("|mode| is invalid")
 
@@ -84,11 +89,11 @@ class ArrangeskipconnModel(InpaintskipconnModel):
 
         return coarse_image, fake_image, aux_image, recon_aux
 
-    def compute_discriminator_loss(self, negative, positive, mask):
+    def compute_discriminator_loss(self, negative, positive, mask, negative_masked):
         D_losses = {}
         if not self.opt.no_gan_loss:
             with torch.no_grad():
-                coarse_image, fake_image, aux_image, recon_aux = self.generate_fake(negative, mask)
+                coarse_image, fake_image, aux_image, recon_aux = self.generate_fake(negative_masked, mask)
             fake_image = fake_image.detach()
             fake_image.requires_grad_()
             aux_image = aux_image.detach()
@@ -123,12 +128,12 @@ class ArrangeskipconnModel(InpaintskipconnModel):
             print(crop_image.shape)
             print(base_image.shape)
 
-    def compute_generator_loss(self, negative, positive, mask, crop_bbox, lesion_bbox, cxr):
+    def compute_generator_loss(self, negative, positive, mask, crop_bbox, lesion_bbox, cxr, negative_masked):
         # if not self.opt.no_ganFeat_loss:
         #     raise NotImplementedError
         if self.opt.vgg_loss:
             raise NotImplementedError
-        coarse_addition, additive_generation, aux_image, recon_aux = self.generate_fake(negative, mask)
+        coarse_addition, additive_generation, aux_image, recon_aux = self.generate_fake(negative_masked, mask)
         coarse_image = self.place_addition_on_cxr(coarse_addition, negative, mask)
         composed_image = self.place_addition_on_cxr(additive_generation, negative, mask)
 

@@ -110,7 +110,7 @@ class CustomTrainDataset(BaseDataset):
             masked_image_tensor = self.transform(cropped_masked_image)
             input_dict = {
                 'original_image': torch.Tensor(full_image),
-                'image_bbox': image_mask_bbox,
+                'image_bbox': new_mask_bbox,
                 'real_image': image_tensor.float(),
                 'inputs': masked_image_tensor.float(),
                 'mask': mask_tensor.float()

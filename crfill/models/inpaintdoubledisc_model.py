@@ -112,10 +112,12 @@ class InpaintdoublediscModel(torch.nn.Module):
             netDRCNN = None
 
         if not opt.isTrain or opt.continue_train:
+            print('loading networks')
             netG = util.load_network(netG, 'G', opt.which_epoch, opt)
             if opt.isTrain:
                 netD = util.load_network(netD, 'D', opt.which_epoch, opt)
-                raise NotImplementedError('Loading DRCNN for continuing training not implemented yet')
+                netDRCNN = networks.define_DRCNN(opt)
+            print('loading complete')
         return netG, netD, netDRCNN
 
     # preprocess the input, such as moving the tensors to GPUs and
@@ -147,8 +149,8 @@ class InpaintdoublediscModel(torch.nn.Module):
         #if self.use_gpu():  # this command is irrelevant, all data will already be at the GPU due to DataParallel in pix2pixtrainer
         #    data['inputs'] = data['inputs'].cuda()
 
-        #return data['inputs'], data['real_image'], data['mask'], data['full_image'], data['full_image_crop_bbox'], data['full_image_bbox']
-        return data['neg_cropped_normalized_cxr'], data['pos_cropped_normalized_cxr'], data['neg_cropped_mask'], data['neg_cxr'], data['neg_crop_bbox'], data['neg_lesion_bbox']
+        return data['inputs'], data['real_image'], data['mask'], data['full_image'], data['full_image_crop_bbox'], data['full_image_bbox']
+        #return data['neg_cropped_normalized_cxr'], data['pos_cropped_normalized_cxr'], data['neg_cropped_mask'], data['neg_cxr'], data['neg_crop_bbox'], data['neg_lesion_bbox']
 
     def g_image_loss(self, coarse_image, fake_image, composed_image, real_image, mask, composed_full_image, full_image_bbox):
         G_losses = {}
@@ -188,13 +190,17 @@ class InpaintdoublediscModel(torch.nn.Module):
             if coarse_image is not None:
                 G_losses['L1_coarse'] = torch.nn.functional.l1_loss(coarse_image, fake_image) * self.opt.beta_l1
             if not self.opt.no_fine_loss:
-                G_losses['L1_fine'] = torch.nn.functional.l1_loss(fake_image, real_image) * 0 # this one is now void -- real image is unrelated to fake_image
+                G_losses['L1_fine'] = torch.nn.functional.l1_loss(fake_image, real_image) * self.opt.beta_l1
+        if self.opt.ssim_loss:
+            #print(fake_image.device)
+            data_range = self.FloatTensor(1).fill_(real_image.max())
+            G_losses['SSIM'] = networks.SSIMLoss().to(real_image.device)(fake_image, real_image, data_range) * self.opt.lambda_ssim
         return G_losses
 
     def compute_generator_loss(self, inputs, real_image, mask):
 
         coarse_image, fake_image = self.generate_fake(
-            inputs, real_image, mask)
+            inputs, mask)
 
         composed_image = fake_image * mask + inputs * (1 - mask)
         G_losses = self.g_image_loss(coarse_image, fake_image, composed_image, real_image, mask)
@@ -205,7 +211,7 @@ class InpaintdoublediscModel(torch.nn.Module):
         D_losses = {}
         if not self.opt.no_gan_loss:
             with torch.no_grad():
-                coarse_image, fake_image = self.generate_fake(inputs, real_image, mask)
+                coarse_image, fake_image = self.generate_fake(inputs, mask)
                 fake_image = fake_image.detach()
                 fake_image.requires_grad_()
                 composed_image = fake_image * mask + inputs * (1 - mask)

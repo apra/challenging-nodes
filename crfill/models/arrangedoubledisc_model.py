@@ -1,15 +1,17 @@
+import os.path
 import pdb
 import torch
 from models.inpaintdoubledisc_model import InpaintdoublediscModel
 import util.util as util
+from pathlib import Path
 
 
 class ArrangedoublediscModel(InpaintdoublediscModel):
     @staticmethod
     def modify_commandline_options(parser, is_train):
         InpaintdoublediscModel.modify_commandline_options(parser, is_train)
-        parser.add_argument('--load_base_g', type=str, required=False, help='load baseg')
-        parser.add_argument('--load_base_d', type=str, required=False, help='load based')
+        parser.add_argument('--load_base_g', type=str, default=None, help='load baseg')
+        parser.add_argument('--load_base_d', type=str, default=None, help='load based')
         parser.add_argument('--lambda_ref', type=float, default=1, help='This is actually lambda in the paper, weight of the CR loss.')
         return parser
 
@@ -21,12 +23,16 @@ class ArrangedoublediscModel(InpaintdoublediscModel):
             self.netD_aux = util.load_network(self.netD_aux, 'D_aux', opt.which_epoch, opt)
         if opt.load_base_g is not None:
             print(f"looad {opt.load_base_g}")
-            self.netG.baseg = util.load_network_path(
-                    self.netG.baseg, opt.load_base_g)
+            self.netG = util.load_network_path(
+                    self.netG, opt.load_base_g)
         if opt.load_base_d is not None:
             print(f"looad {opt.load_base_d}")
             self.netD = util.load_network_path(
                     self.netD, opt.load_base_d)
+            print("loading aux")
+            aux_path = str(opt.load_base_d)[:-4] + '_aux.pth'
+            self.netD_aux = util.load_network_path(
+                self.netD_aux, aux_path)
 
     def save(self, epoch):
         util.save_network(self.netG, 'G', epoch, self.opt)
@@ -72,8 +78,7 @@ class ArrangedoublediscModel(InpaintdoublediscModel):
             return d_loss, inputs
         elif mode == 'inference':
             with torch.no_grad():
-                coarse_image, fake_image, aux_image, recon_aux = self.generate_fake(
-                        inputs, real_image, mask)
+                coarse_image, fake_image, aux_image, recon_aux = self.generate_fake(inputs, mask)
                 composed_image = fake_image*mask + inputs*(1-mask)
             return composed_image, inputs
         else:
@@ -130,12 +135,13 @@ class ArrangedoublediscModel(InpaintdoublediscModel):
         for i in range(len(full_image_crop_bbox)):
             c_x1, c_y1, c_w, c_h = full_image_crop_bbox[i].int()
             try:
-                composed_full_image[i, :, c_y1:c_y1+c_h, c_x1:c_x1+c_w] = composed_image[i]
+                composed_full_image[i, :, c_y1:c_y1+c_h, c_x1:c_x1+c_w] = (composed_image[i] + 1) / 2
             except RuntimeError:
                 print(composed_image[i])
                 print(composed_full_image[i])
                 print(composed_image[i].shape)
                 print(composed_full_image[i].shape)
+
 
         G_losses = self.g_image_loss(coarse_image, fake_image, composed_image, real_image, mask, composed_full_image, full_image_bbox)
 

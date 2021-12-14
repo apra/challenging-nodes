@@ -177,10 +177,10 @@ class InpaintModel(torch.nn.Module):
                 G_losses['L1_coarse'] = torch.nn.functional.l1_loss(coarse_image, real_image) * self.opt.beta_l1
             if not self.opt.no_fine_loss:
                 G_losses['L1_fine'] = torch.nn.functional.l1_loss(fake_image, real_image) * self.opt.beta_l1
-            if self.opt.ssim_loss:
-                #print(fake_image.device)
-                data_range = self.FloatTensor(1).fill_(real_image.max())
-                G_losses['SSIM'] = networks.SSIMLoss().to(real_image.device)(fake_image, real_image, data_range)
+        if self.opt.ssim_loss:
+            #print(fake_image.device)
+            data_range = self.FloatTensor(1).fill_(real_image.max())
+            G_losses['SSIM'] = networks.SSIMLoss().to(real_image.device)(fake_image, real_image, data_range)
 
         return G_losses
 
