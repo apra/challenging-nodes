@@ -91,8 +91,8 @@ for epoch in iter_counter.training_epochs():
                 "saving the latest model (epoch %d, total_steps %d)"
                 % (epoch, iter_counter.total_steps_so_far)
             )
-            trainer.save("epoch%d_step%d" % (epoch, iter_counter.total_steps_so_far))
-            trainer.save("latest")
+            # trainer.save("epoch%d_step%d" % (epoch, iter_counter.total_steps_so_far))
+            # trainer.save("latest")
             iter_counter.record_current_iter()
 
             print("doing validation")
