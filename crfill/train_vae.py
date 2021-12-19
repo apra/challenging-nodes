@@ -112,7 +112,10 @@ for epoch in iter_counter.training_epochs():
                 psnr = 10 * torch.log10(255.0 * 255.0 / (mse + 1e-8))
                 psnr_total += psnr.sum().item()
                 num += bsize
-            psnr_total /= num
+            if num == 0:
+                psnr_total = 0
+            else:
+                psnr_total /= num
             ts_writer.add_scalar(
                 "val/psnr", psnr_total, iter_counter.total_steps_so_far
             )
