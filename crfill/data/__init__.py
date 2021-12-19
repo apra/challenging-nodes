@@ -6,7 +6,7 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 import importlib
 import torch.utils.data
 from data.base_dataset import BaseDataset
-from util.metadata_utils import get_paths_and_nodules, get_paths_negatives
+from util.metadata_utils import get_paths_and_nodules, get_paths_negatives, get_paths
 
 
 def find_dataset_using_name(dataset_name):
@@ -67,7 +67,7 @@ def create_dataloader_trainval(opt):
         paths_negative = get_paths_negatives(opt.train_image_dir)
         paths_and_nodules = [paths_positive, paths_negative]
     else:
-        raise ValueError(f'Unrecognized model name: {opt.model}')
+        paths_and_nodules = get_paths(opt.train_image_dir)
     dataset = find_dataset_using_name(opt.dataset_mode_train)
     instance = dataset()
     print(dataset)

@@ -216,7 +216,9 @@ class InpaintskipconnModel(torch.nn.Module):
 
     def place_addition_on_cxr(self, addition, starting_cxr, mask):
         if not self.opt.no_sharp_skip_connection:
-            return (starting_cxr*torch.exp(addition)) * mask + starting_cxr * (1 - mask)
+            return (starting_cxr * torch.exp(addition)) * mask + starting_cxr * (
+                1 - mask
+            )
 
     def compute_generator_loss(
         self, negative, positive, mask, crop_bbox, lesion_bbox, cxr
@@ -238,12 +240,14 @@ class InpaintskipconnModel(torch.nn.Module):
                 composed_image, positive, desired_mask
             )
 
-            D_losses["D_Fake"] = self.criterionGAN(
-                pred_fake, False, for_discriminator=True
-            )*self.opt.discriminator_weight
-            D_losses["D_real"] = self.criterionGAN(
-                pred_real, True, for_discriminator=True
-            )*self.opt.discriminator_weight
+            D_losses["D_Fake"] = (
+                self.criterionGAN(pred_fake, False, for_discriminator=True)
+                * self.opt.discriminator_weight
+            )
+            D_losses["D_real"] = (
+                self.criterionGAN(pred_real, True, for_discriminator=True)
+                * self.opt.discriminator_weight
+            )
 
         return D_losses
 

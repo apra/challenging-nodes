@@ -87,6 +87,15 @@ def get_paths_and_nodules_helper(image_dir, chex_or_mimic=False):
     return image_nodule_list
 
 
+def get_paths(image_dir):
+    images_paths = []
+    for root, dnames, fnames in sorted(os.walk(image_dir)):
+        for fname in fnames:
+            if is_image_file(fname, extensions=".png"):
+                images_paths.append(os.path.join(root, fname))
+    return images_paths
+
+
 def get_paths_and_nodules(
     image_dir, include_chexpert=True, include_mimic=True, resample_count_node21=0
 ):
