@@ -72,7 +72,7 @@ LOGGING_DIR="$HOME/challenging-nodes/crfill/checkpoints"
 
 #Create output directory on scratch
 mkdir -p "$DATA"
-cp -ra $HOME/data/. "$DATA"
+cp -ra /project/spapa/dataset_node21/ct_patches/images/. "$DATA"
 
 NAME="$EXPERIMENT_NAME""$DATE""-beta$BETAKL_1-sigma$SIGMA_1-latentsize$LATENTSIZE_1-lr$LEARNINGRATE_1"
 
