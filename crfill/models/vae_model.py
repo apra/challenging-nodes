@@ -486,9 +486,7 @@ class vaemodel(nn.Module):
         parser.add_argument(
             "--sigma", type=float, default=0.06, help="Sigma of reconstruction"
         )
-        parser.add_argument(
-            "--beta_kl", type=float, default=1, help="KL divergence"
-        )
+        parser.add_argument("--beta_kl", type=float, default=1, help="KL divergence")
         return parser
 
     def save(self, epoch):
