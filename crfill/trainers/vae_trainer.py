@@ -21,7 +21,7 @@ BaselineVAEOpts = {
         "beta_kl": 1,
         "latent_size": 64,
         "encoder_params": {
-            "layers_per_block_per_layer": [2, 2, 2, 2, 2, 2, 2, 2],
+            "layers_per_block_per_layer": [4, 4, 4, 4, 4, 4, 4, 4],
             "channel_size_per_layer": [64, 64, 128, 128, 128, 128, 256, 256],
             "num_layers_per_resolution": [
                 2,
@@ -33,7 +33,7 @@ BaselineVAEOpts = {
             "mlp_hidden_size": 512,
         },
         "decoder_params": {
-            "layers_per_block_per_layer": [2, 2, 2, 2, 2, 2, 2, 2],
+            "layers_per_block_per_layer": [4, 4, 4, 4, 4, 4, 4, 4],
             "broadcast_size": 8,  # ignored with type :: mlp
             "channel_size_per_layer": [256, 256, 128, 128, 128, 128, 64, 64],
             "num_layers_per_resolution": [2, 2, 2, 2],
