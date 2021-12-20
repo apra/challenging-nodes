@@ -11,7 +11,7 @@
 #SBATCH --error=vae_%A.err
 
 DATE=$(date '+%Y%m%d%H%M')
-EXPERIMENT_NAME="vae_4CNNs_"
+EXPERIMENT_NAME="vae_4CNNs_BIGMLP"
 
 JOBS_SOURCE="$HOME/challenging-nodes/crfill"
 SINGULARITYIMAGE="$HOME/crfill.sif"
@@ -66,6 +66,12 @@ LATENTSIZE_4="${15}"
 #Default 0.0005
 LEARNINGRATE_4="${16}"
 
+#Default 4
+DOWNSAMPLE_1="${17}"
+DOWNSAMPLE_2="${18}"
+DOWNSAMPLE_3="${19}"
+DOWNSAMPLE_4="${20}"
+
 NUM_WORKERS=5
 
 LOGGING_DIR="$HOME/challenging-nodes/crfill/checkpoints"
@@ -74,13 +80,13 @@ LOGGING_DIR="$HOME/challenging-nodes/crfill/checkpoints"
 mkdir -p "$DATA"
 cp -ra /project/spapa/dataset_node21/ct_patches/images/. "$DATA"
 
-NAME="$EXPERIMENT_NAME""$DATE""-beta$BETAKL_1-sigma$SIGMA_1-latentsize$LATENTSIZE_1-lr$LEARNINGRATE_1"
+NAME="$EXPERIMENT_NAME""$DATE""-dwn$DOWNSAMPLE_1-beta$BETAKL_1-sigma$SIGMA_1-latentsize$LATENTSIZE_1-lr$LEARNINGRATE_1"
 
 STANDARD_PARAMS="--seed 0 --batchSize 64 --niter_decay 100 --dataset_mode_train custom_train_vae --dataset_mode custom_train_vae --train_image_dir /data --preprocess_mode none --validation_freq 200000 --niter 900 --display_freq 10000 --model vae"
 
 GPUID=0
 
-COMMAND="python -u $TRAINING_SCRIPT --name $NAME --num_workers $NUM_WORKERS  --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids $GPUID --beta_kl $BETAKL_1 --lr $LEARNINGRATE_1 --sigma $SIGMA_1 --latent_size $LATENTSIZE_1 $STANDARD_PARAMS"
+COMMAND="python -u $TRAINING_SCRIPT --downsample $DOWNSAMPLE_1 --name $NAME --num_workers $NUM_WORKERS  --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids $GPUID --beta_kl $BETAKL_1 --lr $LEARNINGRATE_1 --sigma $SIGMA_1 --latent_size $LATENTSIZE_1 $STANDARD_PARAMS"
 
 echo "Running $NAME"
 singularity exec --no-home --nv \
@@ -94,11 +100,11 @@ $COMMAND &
 
 echo "$NAME command ran"
 
-NAME="$EXPERIMENT_NAME""$DATE""-beta$BETAKL_2-sigma$SIGMA_2-latentsize$LATENTSIZE_2-lr$LEARNINGRATE_2"
+NAME="$EXPERIMENT_NAME""$DATE""-dwn$DOWNSAMPLE_2-beta$BETAKL_2-sigma$SIGMA_2-latentsize$LATENTSIZE_2-lr$LEARNINGRATE_2"
 
 GPUID=1
 
-COMMAND="python -u $TRAINING_SCRIPT --name $NAME --num_workers $NUM_WORKERS  --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids $GPUID --beta_kl $BETAKL_2 --lr $LEARNINGRATE_2 --sigma $SIGMA_2 --latent_size $LATENTSIZE_2 $STANDARD_PARAMS"
+COMMAND="python -u $TRAINING_SCRIPT --downsample $DOWNSAMPLE_2 --name $NAME --num_workers $NUM_WORKERS  --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids $GPUID --beta_kl $BETAKL_2 --lr $LEARNINGRATE_2 --sigma $SIGMA_2 --latent_size $LATENTSIZE_2 $STANDARD_PARAMS"
 
 echo "Running $NAME"
 singularity exec --no-home --nv \
@@ -112,11 +118,11 @@ $COMMAND &
 
 echo "$NAME command ran"
 
-NAME="$EXPERIMENT_NAME""$DATE""-beta$BETAKL_3-sigma$SIGMA_3-latentsize$LATENTSIZE_3-lr$LEARNINGRATE_3"
+NAME="$EXPERIMENT_NAME""$DATE""-dwn$DOWNSAMPLE_3-beta$BETAKL_3-sigma$SIGMA_3-latentsize$LATENTSIZE_3-lr$LEARNINGRATE_3"
 
 GPUID=2
 
-COMMAND="python -u $TRAINING_SCRIPT --name $NAME --num_workers $NUM_WORKERS  --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids $GPUID --beta_kl $BETAKL_3 --lr $LEARNINGRATE_3 --sigma $SIGMA_3 --latent_size $LATENTSIZE_3 $STANDARD_PARAMS"
+COMMAND="python -u $TRAINING_SCRIPT --downsample $DOWNSAMPLE_3 --name $NAME --num_workers $NUM_WORKERS  --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids $GPUID --beta_kl $BETAKL_3 --lr $LEARNINGRATE_3 --sigma $SIGMA_3 --latent_size $LATENTSIZE_3 $STANDARD_PARAMS"
 
 echo "Running $NAME"
 singularity exec --no-home --nv \
@@ -130,11 +136,11 @@ $COMMAND &
 
 echo "$NAME command ran"
 
-NAME="$EXPERIMENT_NAME""$DATE""-beta$BETAKL_4-sigma$SIGMA_4-latentsize$LATENTSIZE_4-lr$LEARNINGRATE_4"
+NAME="$EXPERIMENT_NAME""$DATE""-dwn$DOWNSAMPLE_4-beta$BETAKL_4-sigma$SIGMA_4-latentsize$LATENTSIZE_4-lr$LEARNINGRATE_4"
 
 GPUID=3
 
-COMMAND="python -u $TRAINING_SCRIPT --name $NAME --num_workers $NUM_WORKERS  --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids $GPUID --beta_kl $BETAKL_4 --lr $LEARNINGRATE_4 --sigma $SIGMA_4 --latent_size $LATENTSIZE_4 $STANDARD_PARAMS"
+COMMAND="python -u $TRAINING_SCRIPT --downsample $DOWNSAMPLE_4 --name $NAME --num_workers $NUM_WORKERS  --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids $GPUID --beta_kl $BETAKL_4 --lr $LEARNINGRATE_4 --sigma $SIGMA_4 --latent_size $LATENTSIZE_4 $STANDARD_PARAMS"
 
 echo "Running $NAME"
 singularity exec --no-home --nv \

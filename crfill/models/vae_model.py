@@ -484,6 +484,9 @@ class vaemodel(nn.Module):
             "--latent_size", type=int, default=64, help="Latent size of VAE"
         )
         parser.add_argument(
+            "--downsample", type=int, default=4, help="Downsamplings performed in encoder."
+        )
+        parser.add_argument(
             "--sigma", type=float, default=0.06, help="Sigma of reconstruction"
         )
         parser.add_argument("--beta_kl", type=float, default=1, help="KL divergence")

@@ -30,14 +30,14 @@ BaselineVAEOpts = {
                 2,
             ],  # same logic as in the decoder but with avg pool 2d
             "downsample": 4,
-            "mlp_hidden_size": 512,
+            "mlp_hidden_size": 1024,
         },
         "decoder_params": {
             "layers_per_block_per_layer": [4, 4, 4, 4, 4, 4, 4, 4],
             "broadcast_size": 8,  # ignored with type :: mlp
             "channel_size_per_layer": [256, 256, 128, 128, 128, 128, 64, 64],
             "num_layers_per_resolution": [2, 2, 2, 2],
-            "mlp_hidden_size": 512,
+            "mlp_hidden_size": 1024,
             "architecture_type": "mlp",
         },
     },
@@ -51,6 +51,7 @@ class VAETrainer:
         BaselineVAEOpts["model"]["latent_size"] = self.opt.latent_size
         BaselineVAEOpts["model"]["sigma"] = self.opt.sigma
         BaselineVAEOpts["model"]["beta_kl"] = self.opt.beta_kl
+        BaselineVAEOpts["model"]["encoder_params"]['downsample'] = self.opt.downsample
 
         self.model = vaemodel(opt=opt, **BaselineVAEOpts["model"])
         if len(opt.gpu_ids) > 0:
