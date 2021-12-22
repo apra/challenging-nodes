@@ -11,7 +11,7 @@
 #SBATCH --error=vae_%A.err
 
 DATE=$(date '+%Y%m%d%H%M')
-EXPERIMENT_NAME="vae_4CNNs_BIGMLP"
+EXPERIMENT_NAME="vae_4CNNs_BIGMLP_8CNNs"
 
 JOBS_SOURCE="$HOME/challenging-nodes/crfill"
 SINGULARITYIMAGE="$HOME/crfill.sif"
