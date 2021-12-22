@@ -91,7 +91,7 @@ for i in range(num_tasks):
     lines.append('\n')
 
     singularity_command = f"singularity exec --no-home --nv " \
-                          f"--bing {data}:/data " \
+                          f"--bind {data}:/data " \
                           f"--bind {jobs_source} " \
                           f"--bind $HOME/challenging-nodes/crfill/checkpoints/{experiment_name}_{i} " \
                           f"--pwd {jobs_source} " \
