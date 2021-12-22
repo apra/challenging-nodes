@@ -103,4 +103,7 @@ for i in range(num_tasks):
         with open(Path(experiment_name)/Path(f"job_{(i//gpus_per_node)}.sh"), "w+") as f:
             f.writelines(lines)
         lines = None
+    else:
+        # to run all the commands in the same node
+        lines[-1] += ' &'
 
