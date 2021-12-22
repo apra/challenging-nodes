@@ -93,7 +93,7 @@ for i in range(num_tasks):
     singularity_command = f"singularity exec --no-home --nv " \
                           f"--bind {data}:/data " \
                           f"--bind {jobs_source} " \
-                          f"--bind $HOME/challenging-nodes/crfill/checkpoints/{experiment_name}_{i} " \
+                          f"--bind $HOME/challenging-nodes/crfill/checkpoints " \
                           f"--pwd {jobs_source} " \
                           f"{singularity_image} " \
                           f"{current_params}"
