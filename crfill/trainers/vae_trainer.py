@@ -51,14 +51,14 @@ class VAETrainer:
         BaselineVAEOpts["model"]["latent_size"] = self.opt.latent_size
         BaselineVAEOpts["model"]["sigma"] = self.opt.sigma
         BaselineVAEOpts["model"]["beta_kl"] = self.opt.beta_kl
-        BaselineVAEOpts["model"]["encoder_params"]['downsample'] = self.opt.downsample
+        BaselineVAEOpts["model"]["encoder_params"]["downsample"] = self.opt.downsample
 
         self.model = vaemodel(opt=opt, **BaselineVAEOpts["model"])
         if len(opt.gpu_ids) > 0:
             self.model = DataParallelWithCallback(self.model, device_ids=opt.gpu_ids)
-            self.pix2pix_model_on_one_gpu = self.model.module
+            self.model_on_one_gpu = self.model.module
         else:
-            self.pix2pix_model_on_one_gpu = self.model
+            self.model_on_one_gpu = self.model
 
         self.generated = None
         self.inputs = None
@@ -99,7 +99,8 @@ class VAETrainer:
         self.update_learning_rate(epoch)
 
     def save(self, epoch):
-        self.pix2pix_model_on_one_gpu.save(epoch)
+        if not self.opt.load_from_checkpoint:
+            self.model_on_one_gpu.save(epoch)
 
     ##################################################################
     # Helper functions

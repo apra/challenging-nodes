@@ -176,7 +176,8 @@ class BaseOptions:
                 if hasattr(new_opt, k) and v != getattr(new_opt, k):
                     new_val = getattr(new_opt, k)
                     parser.set_defaults(**{k: new_val})
-
+        if opt.load_from_checkpoint:
+            self.update_options_from_file(parser=parser, opt=opt)
         opt = parser.parse_args()
         self.parser = parser
         return opt
