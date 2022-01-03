@@ -11,11 +11,13 @@ torch-generative-inpainting/checkpoints/tf_converted
 # Distribution / packaging
 .Python
 env/
+model_submission/model/latest_net_G.pth
 build/
 datasets/
 develop-eggs/
 dist/
 downloads/
+output/
 eggs/
 .eggs/
 lib/

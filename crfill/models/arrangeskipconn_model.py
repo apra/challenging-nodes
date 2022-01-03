@@ -2,7 +2,7 @@ import pdb
 import torch
 from models.inpaintskipconn_model import InpaintskipconnModel
 import util.util as util
-from copy import deepcopy
+from PIL import Image
 
 
 class ArrangeskipconnModel(InpaintskipconnModel):
@@ -101,12 +101,23 @@ class ArrangeskipconnModel(InpaintskipconnModel):
             composed_image = self.place_addition_on_cxr(fake_image, negative, mask)
             composed_aux = self.place_addition_on_cxr(aux_image, negative, mask)
 
-            pred_fake, pred_real = self.discriminate(composed_image, positive, mask)
-            D_losses['D_Fake'] = self.criterionGAN(pred_fake, False,
-                                                   for_discriminator=True)
-            D_losses['D_real'] = self.criterionGAN(pred_real, True,
 
-                                                   for_discriminator=True)
+            if self.opt.mask_pos_discriminator:
+                composed_masked = composed_image * mask
+                positive_masked = positive * mask
+                pred_fake, pred_real = self.discriminate(composed_masked, positive_masked, mask)
+                D_losses['D_Fake'] = self.criterionGAN(pred_fake, False,
+                                                       for_discriminator=True)
+                D_losses['D_real'] = self.criterionGAN(pred_real, True,
+                                                       for_discriminator=True)
+            else:
+                if self.opt.mask_pos_discriminator:
+                    pred_fake, pred_real = self.discriminate(composed_image, positive, mask)
+                    D_losses['D_Fake'] = self.criterionGAN(pred_fake, False,
+                                                           for_discriminator=True)
+                    D_losses['D_real'] = self.criterionGAN(pred_real, True,
+                                                           for_discriminator=True)
+
             _netD = self.netD
             self.netD = self.netD_aux
             pred_fake, pred_real = self.discriminate(composed_aux, positive, mask)

@@ -100,7 +100,12 @@ class CustomTrainDataset(BaseDataset):
             cropped_image, new_mask_bbox, _ = crop_around_mask_bbox(full_image, image_mask_bbox,
                                                                  crop_size=crop_size,
                                                                  rng=self.rng)
-            cropped_image = normalize_cxr(cropped_image)  # divide 4095
+
+            #old
+            #cropped_image = normalize_cxr(cropped_image)  # divide 4095
+            #new
+            cropped_image = cropped_image / np.max(cropped_image)
+
             cropped_masked_image, mask_array = mask_image(cropped_image, new_mask_bbox)
             full_image = np.array(normalize_cxr(full_image), dtype='float32')
             # params = get_params(self.opt, cropped_image.shape)

@@ -93,13 +93,24 @@ class ArrangeModel(InpaintModel):
             composed_image = fake_image*mask + inputs*(1-mask)
             composed_aux = aux_image*mask + inputs*(1-mask)
 
-            pred_fake, pred_real = self.discriminate(
-                composed_image, real_image, mask)
-            D_losses['D_Fake'] = self.criterionGAN(pred_fake, False,
-                                                   for_discriminator=True)
-            D_losses['D_real'] = self.criterionGAN(pred_real, True,
+            if self.opt.mask_pos_discriminator:
+                composed_image_masked = composed_image * mask
+                real_image_masked = real_image * mask
+                pred_fake, pred_real = self.discriminate(
+                    composed_image_masked, real_image_masked, mask)
+                D_losses['D_Fake'] = self.criterionGAN(pred_fake, False,
+                                                       for_discriminator=True)
+                D_losses['D_real'] = self.criterionGAN(pred_real, True,
 
-                                                   for_discriminator=True)
+                                                       for_discriminator=True)
+            else:
+                pred_fake, pred_real = self.discriminate(
+                    composed_image, real_image, mask)
+                D_losses['D_Fake'] = self.criterionGAN(pred_fake, False,
+                                                       for_discriminator=True)
+                D_losses['D_real'] = self.criterionGAN(pred_real, True,
+
+                                                       for_discriminator=True)
             _netD = self.netD
             self.netD = self.netD_aux
             pred_fake, pred_real = self.discriminate(

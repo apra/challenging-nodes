@@ -34,6 +34,8 @@ class GANLoss(nn.Module):
             pass
         elif gan_mode == 'softplus':
             pass
+        elif gan_mode == 'debug':
+            pass
         else:
             raise ValueError('Unexpected gan_mode {}'.format(gan_mode))
 
@@ -75,6 +77,8 @@ class GANLoss(nn.Module):
                 assert target_is_real, "The generator's hinge loss must be aiming for real"
                 loss = -torch.mean(input)
             return loss
+        elif self.gan_mode == 'debug':
+            return (input.mean() - input.mean()) * 0.
         elif self.gan_mode == 'softplus':
             # wgan
             if target_is_real:

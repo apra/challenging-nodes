@@ -1,26 +1,28 @@
 import SimpleITK
 import numpy as np
+import torch
+import matplotlib.pyplot as plt
 
 from evalutils import SegmentationAlgorithm
 from evalutils.validators import (
     UniquePathIndicesValidator,
     UniqueImagesValidator,
 )
-from utils import *
-from typing import Dict
 import json
-from skimage.measure import regionprops
-import imageio
 from pathlib import Path
 import time
-import pandas as pd
-import random
-from random import randrange
-import os
+
+from model_submission.model.inpaint_g import TwostagendGenerator
+from model_submission.model.utils import load_network_path
+from model_submission.utils.bbox import crop_around_mask_bbox, mask_image
+from model_submission.utils.transforms import basic_transform, normalize_cxr
+
 
 # This parameter adapts the paths between local execution and execution in docker. You can use this flag to switch between these two modes.
 # For building your docker, set this parameter to True. If False, it will run process.py locally for test purposes.
-execute_in_docker = True
+execute_in_docker = False
+
+
 class Nodulegeneration(SegmentationAlgorithm):
     def __init__(self):
         super().__init__(
@@ -39,55 +41,62 @@ class Nodulegeneration(SegmentationAlgorithm):
         # load nodules.json for location
         with open("/input/nodules.json" if execute_in_docker else "test/nodules.json") as f:
             self.data = json.load(f)
-    
+
+        self.crop_size = 256
+        self.net = TwostagendGenerator()
+        model_save_path = "C:\\Users\\e.marcus\\Models\\chalnode-checkpoints\\ssim551_long_rcnn_finetune\\latest_net_G.pth"
+        self.net = load_network_path(self.net, model_save_path, strict=True)
+        self.net.eval()
+
+        self.transform = basic_transform()
+
+    def generate_composed_image(self, original_image, masked_image, mask):
+        mask_tensor = torch.Tensor(mask)
+        original_tensor = self.transform(original_image)
+        input_tensor = self.transform(masked_image)
+        mask_tensor = torch.unsqueeze(mask_tensor, 0).float()
+        input_tensor = torch.unsqueeze(input_tensor, 0).float()
+        original_tensor = torch.unsqueeze(original_tensor, 0).float()
+        with torch.no_grad():
+            output = self.net(input_tensor, mask_tensor)
+
+        composed_image = output[1] * mask + original_tensor * (1 - mask)
+        composed_image_np = composed_image.numpy().reshape((self.crop_size, self.crop_size))
+        return composed_image_np
 
     def predict(self, *, input_image: SimpleITK.Image) -> SimpleITK.Image:
         input_image = SimpleITK.GetArrayFromImage(input_image)
         total_time = time.time()
-        if len(input_image.shape)==2:
+        if len(input_image.shape) == 2:
             input_image = np.expand_dims(input_image, 0)
-        
-        pd_data = pd.read_csv('/opt/algorithm/ct_nodules.csv' if execute_in_docker else "ct_nodules.csv")
         
         nodule_images = np.zeros(input_image.shape)
         
         for j in range(len(input_image)):
             t = time.time()
-            cxr_img_scaled = input_image[j,:,:]
-            nodule_data = [i for i in self.data['boxes'] if i['corners'][0][2]==j]
+            cxr_img_scaled = input_image[j, :, :]
+            cxr_img_scaled = normalize_cxr(cxr_img_scaled)
+            nodule_data = [i for i in self.data['boxes'] if i['corners'][0][2] == j]
 
+            # loop over different images
             for nodule in nodule_data:
-                cxr_img_scaled = convert_to_range_0_1(cxr_img_scaled)
                 boxes = nodule['corners']
-                # no spacing info in GC with 3D version
-                #x_min, y_min, x_max, y_max = boxes[2][0]/spacing_x, boxes[2][1]/spacing_y, boxes[0][0]/spacing_x, boxes[0][1]/spacing_y
                 y_min, x_min, y_max, x_max = boxes[2][0], boxes[2][1], boxes[0][0], boxes[0][1]
+                mask_bbox = [int(x_min), int(y_min), int(x_max) - int(x_min), int(y_max) - int(y_min)]
 
-                x_min, y_min, x_max, y_max = int(x_min), int(y_min), int(x_max), int(y_max)
+                cropped_cxr, new_mask_bbox, crop_bbox = crop_around_mask_bbox(cxr_img_scaled, mask_bbox)
+                cropped_masked_cxr, cropped_mask = mask_image(cropped_cxr, new_mask_bbox)
+                composed_img = self.generate_composed_image(cropped_cxr, cropped_masked_cxr, cropped_mask)
 
-                #------------------------------ Randomly choose ct patch and scale it according to bounding box size.
-                required_diameter = max(x_max-x_min, y_max-y_min)
-                ct_names = pd_data[pd_data['diameter']>int((required_diameter/5))]['img_name'].values
-                if len(ct_names)<1:
-                    pd_data[pd_data['diameter']>int((required_diameter/10))]['img_name'].values
-                    
-                index_ct = random.randint(0, len(ct_names)-1)
-                path_nodule = '/opt/algorithm/nodule_patches/' if execute_in_docker else 'nodule_patches/'
-                X_ct_2d_resampled, diameter = process_CT_patches(os.path.join(path_nodule,ct_names[index_ct]), os.path.join(path_nodule, ct_names[index_ct].replace('dcm','seg')), required_diameter)
-                
-                crop = cxr_img_scaled[x_min:x_max, y_min:y_max].copy()
-                new_arr = convert_to_range_0_1(X_ct_2d_resampled)
+                c_x1, c_y1, c_w, c_h = crop_bbox
+                cxr_img_scaled[c_y1: c_y1+c_h, c_x1: c_x1+c_w] = (composed_img + 1) / 2  # undo normalization on output
 
-                # contrast matching:
-                c = contrast_matching(new_arr, cxr_img_scaled[x_min:x_max, y_min:y_max])
-                nodule_contrasted = new_arr * c
-
-                indexes = nodule_contrasted!=np.min(nodule_contrasted)
-                result = poisson_blend(nodule_contrasted, cxr_img_scaled, y_min, y_max, x_min, x_max)
-                result[x_min:x_max, y_min:y_max] = np.mean(np.array([crop*255, result[x_min:x_max, y_min:y_max]]), axis=0)
-                cxr_img_scaled = result.copy()
-
-            nodule_images[j,:,:] = result 
+            print("time for image: ", time.time()-t)
+            result = cxr_img_scaled.copy()
+            result *= 4095  # TODO: undo normalization here correct?
+            nodule_images[j,:,:] = result
+            plt.imshow(result)
+            plt.show()
         print('total time took ', time.time()-total_time)
         return SimpleITK.GetImageFromArray(nodule_images)
 

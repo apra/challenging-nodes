@@ -144,11 +144,13 @@ def mkdirs(paths):
         for path in paths:
             mkdir(path)
     else:
+        print(paths)
         mkdir(paths)
 
 
 def mkdir(path):
     if not os.path.exists(path):
+        print(path)
         os.makedirs(path)
 
 
