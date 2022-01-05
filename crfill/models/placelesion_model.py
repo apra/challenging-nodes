@@ -194,6 +194,7 @@ class placelesionmodel(torch.nn.Module):
         vaeopts["model"]["encoder_params"]["downsample"] = self.opt.downsample
 
         vaeModel = vaemodel(opt=opt, **vaeopts["model"])
+        vaeModel.cuda()
         if opt.isTrain:
             netD = networks.define_D(opt)
             netDRCNN = networks.define_DRCNN(opt)
