@@ -51,8 +51,9 @@ class ArrangeplacelesionModel(placelesionmodel):
         util.save_network(self.netD, "D", epoch, self.opt)
 
     def create_optimizers(self, opt):
-        G_params = [p for name, p in self.netG.named_parameters() if name.startswith("decoder")]
-
+        print("Created optimizers")
+        #G_params = [p for name, p in self.netG.named_parameters() if name.startswith("decoder")]
+        G_params = [p for name, p in self.place_lesion.named_parameters()]
         # G_params = [p for name, p in self.netG.named_parameters() \
         #        if (not name.startswith("coarse"))]
         D_params = list(self.netD.parameters())
