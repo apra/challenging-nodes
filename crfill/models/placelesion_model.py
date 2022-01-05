@@ -251,10 +251,10 @@ class placelesionmodel(torch.nn.Module):
         G_losses = {}
 
         # Faster RCNN loss -- For aux loss, composed_full_image and full_image_bbox will be passed as None
-        if composed_full_image is not None:
-            rcnn_losses = self.RCNN_loss(composed_full_image, full_image_bbox)
-            G_losses["RCNN"] = rcnn_losses
-            # G_losses['RCNN'] = self.criterionGAN(pred_rcnn, True, for_discriminator=False)
+        # if composed_full_image is not None:
+        #     rcnn_losses = self.RCNN_loss(composed_full_image, full_image_bbox)
+        #     G_losses["RCNN"] = rcnn_losses
+        #     # G_losses['RCNN'] = self.criterionGAN(pred_rcnn, True, for_discriminator=False)
 
         # 'Normal' Adversarial
         if not self.opt.no_gan_loss and not self.opt.no_fine_loss:
