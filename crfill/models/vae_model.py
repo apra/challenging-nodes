@@ -33,14 +33,14 @@ class Interpolate(nn.Module):
 
 class ResidualBlock(nn.Module):
     def __init__(
-            self,
-            n_channels,
-            *,
-            num_layers=2,
-            kernel_size=3,
-            dilation=1,
-            groups=1,
-            rezero=True,
+        self,
+        n_channels,
+        *,
+        num_layers=2,
+        kernel_size=3,
+        dilation=1,
+        groups=1,
+        rezero=True,
     ):
         super(ResidualBlock, self).__init__()
         ch = n_channels
@@ -90,11 +90,11 @@ class ResidualBlock(nn.Module):
 
 
 def log_residual_stack_structure(
-        channel_size_per_layer: List[int],
-        layers_per_block_per_layer: List[int],
-        downsample: int,
-        num_layers_per_resolution: List[int],
-        encoder: bool = True,
+    channel_size_per_layer: List[int],
+    layers_per_block_per_layer: List[int],
+    downsample: int,
+    num_layers_per_resolution: List[int],
+    encoder: bool = True,
 ):
     print("Creating structure with {} downsamples.".format(downsample))
     layers = []
@@ -141,11 +141,11 @@ def log_residual_stack_structure(
 
 
 def build_residual_stack(
-        channel_size_per_layer: List[int],
-        layers_per_block_per_layer: List[int],
-        downsample: int,
-        num_layers_per_resolution: List[int],
-        encoder: bool = True,
+    channel_size_per_layer: List[int],
+    layers_per_block_per_layer: List[int],
+    downsample: int,
+    num_layers_per_resolution: List[int],
+    encoder: bool = True,
 ):
     print(
         "\n".join(
@@ -201,17 +201,17 @@ def build_residual_stack(
 
 class Encoder(torch.nn.Module):
     def __init__(
-            self,
-            channel_size_per_layer: List[int],
-            layers_per_block_per_layer: List[int],
-            latent_size: int,
-            width: int,
-            height: int,
-            num_layers_per_resolution,
-            mlp_hidden_size: int = 512,
-            channel_size: int = 64,
-            input_channels: int = 3,
-            downsample: int = 4,
+        self,
+        channel_size_per_layer: List[int],
+        layers_per_block_per_layer: List[int],
+        latent_size: int,
+        width: int,
+        height: int,
+        num_layers_per_resolution,
+        mlp_hidden_size: int = 512,
+        channel_size: int = 64,
+        input_channels: int = 3,
+        downsample: int = 4,
     ):
         super().__init__()
         self.latent_size = latent_size
@@ -273,16 +273,16 @@ class Encoder(torch.nn.Module):
 
 class MLPDecoder(torch.nn.Module):
     def __init__(
-            self,
-            latent_size: int,
-            width: int,
-            height: int,
-            channel_size_per_layer: List[int] = (256, 256, 256, 256, 128, 128, 64, 64),
-            layers_per_block_per_layer: List[int] = (2, 2, 2, 2, 2, 2, 2, 2),
-            num_layers_per_resolution: List[int] = (2, 2, 2, 2),
-            input_channels: int = 3,
-            downsample: Optional[int] = 4,
-            mlp_hidden_size: Optional[int] = 512,
+        self,
+        latent_size: int,
+        width: int,
+        height: int,
+        channel_size_per_layer: List[int] = (256, 256, 256, 256, 128, 128, 64, 64),
+        layers_per_block_per_layer: List[int] = (2, 2, 2, 2, 2, 2, 2, 2),
+        num_layers_per_resolution: List[int] = (2, 2, 2, 2),
+        input_channels: int = 3,
+        downsample: Optional[int] = 4,
+        mlp_hidden_size: Optional[int] = 512,
     ):
         super().__init__()
 
@@ -335,15 +335,15 @@ class MLPDecoder(torch.nn.Module):
 
 class BroadcastDecoder(torch.nn.Module):
     def __init__(
-            self,
-            latent_size: int,
-            width: int,
-            height: int,
-            broadcast_size: Optional[int] = 8,
-            channel_size_per_layer: List[int] = (256, 256, 256, 256, 128, 128, 64, 64),
-            layers_per_block_per_layer: List[int] = (2, 2, 2, 2, 2, 2, 2, 2),
-            num_layers_per_resolution: List[int] = (2, 2, 2, 2),
-            input_channels: int = 3,
+        self,
+        latent_size: int,
+        width: int,
+        height: int,
+        broadcast_size: Optional[int] = 8,
+        channel_size_per_layer: List[int] = (256, 256, 256, 256, 128, 128, 64, 64),
+        layers_per_block_per_layer: List[int] = (2, 2, 2, 2, 2, 2, 2, 2),
+        num_layers_per_resolution: List[int] = (2, 2, 2, 2),
+        input_channels: int = 3,
     ):
         super().__init__()
         downsample = math.ceil(math.log2(width / broadcast_size))
@@ -395,8 +395,8 @@ class BroadcastDecoder(torch.nn.Module):
         batch_size = x.shape[0]
         z_tiled = (
             x.unsqueeze(-1)
-                .unsqueeze(-1)
-                .expand(batch_size, x.shape[1], self.h_broadcast, self.w_broadcast)
+            .unsqueeze(-1)
+            .expand(batch_size, x.shape[1], self.h_broadcast, self.w_broadcast)
         )
         coord_map = self.coord_map_const.expand(
             batch_size, 2, self.h_broadcast, self.w_broadcast
@@ -509,7 +509,6 @@ class vaemodel(nn.Module):
         util.load_network_path(self, self.opt.network_path)
 
     def sample(self, x=None, samples=2):
-
         b_size = samples
         mean = torch.zeros((b_size, self.opt.latent_size)).to("cuda")
         sigma = torch.ones((b_size, self.opt.latent_size)).to("cuda")
@@ -519,12 +518,12 @@ class vaemodel(nn.Module):
             encoder_out = self.forward_vae_slots(x)
             mean = encoder_out["latent_means"]
             sigma = encoder_out["latent_sigmas"]
-        mean = mean.unsqueeze(0)
-        sigma = sigma.unsqueeze(0)
-        mean = mean.repeat(samples, 1, 1).view(b_size * samples, -1)
-        sigma = sigma.repeat(samples, 1, 1).view(b_size * samples, -1)
+            mean = mean.unsqueeze(0)
+            sigma = sigma.unsqueeze(0)
+            mean = mean.repeat(samples, 1, 1).view(b_size * samples, -1)
+            sigma = 10 * sigma.repeat(samples, 1, 1).view(b_size * samples, -1)
 
-        q_dist = dists.Normal(mean, 100*sigma)
+        q_dist = dists.Normal(mean, sigma)
 
         z = q_dist.sample()
 

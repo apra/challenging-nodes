@@ -43,4 +43,7 @@ ts_writer = tensorboard.SummaryWriter(f"{opt.checkpoints_dir}/tensorboard")
 for i, data in enumerate(dataloader_train):
     result = model.sample(data["inputs"])
     ts_writer.add_image("sampling/results", make_grid((result), nrow=4), i)
-    ts_writer.add_image("sampling/inputs", make_grid((data['inputs'])), i)
+    ts_writer.add_image("sampling/inputs", make_grid((data["inputs"])), i)
+
+    result = model.sample()
+    ts_writer.add_image("sampling/random", make_grid(result, nrow=4), i)
