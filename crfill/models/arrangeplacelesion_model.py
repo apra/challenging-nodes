@@ -113,10 +113,10 @@ class ArrangeplacelesionModel(placelesionmodel):
                 lesion = self.generate_fake(
                     negative, mask
                 )
-            lesion = lesion.detach()
-            lesion.requires_grad_()
+                composed_image = self.place_addition_on_cxr(lesion, negative, mask)
 
-            composed_image = self.place_addition_on_cxr(lesion, negative, mask)
+            composed_image = composed_image.detach()
+            composed_image.requires_grad_()
 
             pred_fake, pred_real = self.discriminate(composed_image, positive, mask)
             D_losses["D_Fake"] = self.criterionGAN(
