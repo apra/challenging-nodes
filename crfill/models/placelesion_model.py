@@ -250,10 +250,10 @@ class placelesionmodel(torch.nn.Module):
         G_losses = {}
 
         # Faster RCNN loss -- For aux loss, composed_full_image and full_image_bbox will be passed as None
-        # if composed_full_image is not None:
-        #     rcnn_losses = self.RCNN_loss(composed_full_image, full_image_bbox)
-        #     G_losses["RCNN"] = rcnn_losses
-        #     # G_losses['RCNN'] = self.criterionGAN(pred_rcnn, True, for_discriminator=False)
+        if composed_full_image is not None:
+            rcnn_losses = self.RCNN_loss(composed_full_image, full_image_bbox)
+            G_losses["RCNN"] = rcnn_losses
+            # G_losses['RCNN'] = self.criterionGAN(pred_rcnn, True, for_discriminator=False)
 
         # 'Normal' Adversarial
         if not self.opt.no_gan_loss and not self.opt.no_fine_loss:
@@ -282,27 +282,30 @@ class placelesionmodel(torch.nn.Module):
         return G_losses
 
     def place_addition_on_cxr(self, addition, starting_cxr, mask):
+        final_addition = addition.clone()
+        new_addition = torch.empty_like(addition)
+        threshold = 1 / 4096
+        final_addition[final_addition < threshold] = threshold
+        starting_cxr = (starting_cxr + 1) / 2
+        for i, (star, add) in enumerate(zip(starting_cxr, addition)):
+            new_addition[i] = add + 1 - add.max()
+
+        addition = new_addition
         if (
                 addition.shape[2] < starting_cxr.shape[2]
                 or addition.shape[3] < starting_cxr.shape[3]
         ):
-            final_addition = addition.clone()
-            new_addition = torch.empty_like(addition)
-            threshold = 1 / 4096
-            final_addition[final_addition < threshold] = threshold
-            starting_cxr = (starting_cxr + 1) / 2
-            for i, (star, add) in enumerate(zip(starting_cxr, addition)):
-                new_addition[i] = add + 1-add.max()
+
             final_addition = torch.zeros_like(starting_cxr)
             for sample in range(final_addition.shape[0]):
                 full_height = starting_cxr[sample].shape[1]
                 full_width = starting_cxr[sample].shape[2]
-                height = new_addition[sample].shape[1]
-                width = new_addition[sample].shape[2]
+                height = addition[sample].shape[1]
+                width = addition[sample].shape[2]
 
                 rnd_x = np.random.randint(0, full_height - height)
                 rnd_y = np.random.randint(0, full_width - width)
-                final_addition[sample] = new_addition[sample].min()
+                final_addition[sample] = addition[sample].min()
                 final_addition[sample, :, rnd_x: rnd_x + height, rnd_y: rnd_y + width] = new_addition[sample]
 
             addition = final_addition
@@ -311,7 +314,6 @@ class placelesionmodel(torch.nn.Module):
             threshold = 1 / 4095
             starting_cxr[starting_cxr < threshold] = threshold
             new_addition = addition.clone()
-
             new_addition[addition < threshold] = threshold
 
         return self.place_lesion(((starting_cxr * new_addition) - 0.5) / 0.5)
@@ -322,30 +324,7 @@ class placelesionmodel(torch.nn.Module):
         return NotImplementedError
 
     def compute_discriminator_loss(self, negative, positive, desired_mask):
-        D_losses = {}
-        if not self.opt.no_gan_loss:
-            with torch.no_grad():
-                lesion = self.generate_fake(negative, desired_mask)
-                lesion = lesion.detach()
-                lesion.requires_grad_()
-                composed_image = self.place_addition_on_cxr(
-                    lesion, negative, desired_mask
-                )
-
-            pred_fake, pred_real = self.discriminate(
-                composed_image, positive, desired_mask
-            )
-
-            D_losses["D_Fake"] = (
-                    self.criterionGAN(pred_fake, False, for_discriminator=True)
-                    * self.opt.discriminator_weight
-            )
-            D_losses["D_real"] = (
-                    self.criterionGAN(pred_real, True, for_discriminator=True)
-                    * self.opt.discriminator_weight
-            )
-
-        return D_losses
+        return NotImplementedError
 
     def generate_fake(self, inputs, mask):
         coarse_image, fake_image = self.netG(inputs, mask)
