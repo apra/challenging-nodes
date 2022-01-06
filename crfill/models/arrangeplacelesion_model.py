@@ -126,7 +126,6 @@ class ArrangeplacelesionModel(placelesionmodel):
             D_losses["D_real"] = self.criterionGAN(
                 pred_real, True, for_discriminator=True
             )
-            _netD = self.netD
 
         return D_losses
 

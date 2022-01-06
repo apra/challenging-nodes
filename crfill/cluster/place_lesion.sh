@@ -25,7 +25,7 @@ cp -ra $HOME/data/. "$DATA"
 
 NAME="vae_sigma_beta_param_search_4"
 
-STANDARD_PARAMS="--no_l1_loss --network_path $LOGGING_DIR/vae_sigma_beta_param_search_4/vae_sigma_beta_param_search_4/latest_net_G.pth --seed 0 --lr 0.0002 --batchSize 32 --niter_decay 8 --include_chexpert --include_mimic --node21_resample_count 10 --dataset_mode_train custom_train_all --dataset_mode custom_train --train_image_dir /data --D_steps_per_G 10000 --netD deepfill --preprocess_mode none --validation_freq 20000 --niter 43 --display_freq 5000 --model arrangeplacelesion"
+STANDARD_PARAMS="--no_l1_loss --network_path $LOGGING_DIR/vae_sigma_beta_param_search_4/vae_sigma_beta_param_search_4/latest_net_G.pth --seed 0 --lr 0.0002 --batchSize 32 --niter_decay 8 --include_chexpert --include_mimic --node21_resample_count 10 --dataset_mode_train custom_train_all --dataset_mode custom_train --train_image_dir /data --D_steps_per_G 100 --netD deepfill --preprocess_mode none --validation_freq 20000 --niter 43 --display_freq 5000 --model arrangeplacelesion"
 
 COMMAND="python -u $TRAINING_SCRIPT --load_from_checkpoint --num_folds 20 --name $NAME --num_workers $NUM_WORKERS --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids 0,1,2,3 $STANDARD_PARAMS"
 

@@ -59,6 +59,7 @@ for epoch in iter_counter.training_epochs():
         # Training
         # train generator
         if i % opt.D_steps_per_G == 0:
+            print(f"generator running one step! i = {i}")
             trainer.run_generator_one_step(data_i, i)
 
         if iter_counter.needs_displaying():
@@ -83,27 +84,27 @@ for epoch in iter_counter.training_epochs():
                 make_grid((data_i[input_name][:num_print] + 1) / 2),
                 iter_counter.total_steps_so_far,
             )
-
-            infer_out, inp = trainer.model.forward(data_i, mode="inference")
-            vis = (make_grid(inp[:num_print]) + 1) / 2
-            ts_writer.add_image("train/infer_in", vis, iter_counter.total_steps_so_far)
-            vis = (make_grid(infer_out[:num_print]) + 1) / 2
-            vis = torch.clamp(vis, 0, 1)
-            ts_writer.add_image("train/infer_out", vis, iter_counter.total_steps_so_far)
-            generated = trainer.get_latest_generated()
-            for k, v in generated.items():
-                if v is None:
-                    continue
-                if "label" in k:
-                    vis = make_grid(v[:num_print].expand(-1, 3, -1, -1))[0]
-                    writer.add_single_label(k, vis, iter_counter.total_steps_so_far)
-                else:
-                    if v.size(1) == 3:
-                        vis = (make_grid(v[:num_print]) + 1) / 2
-                        vis = torch.clamp(vis, 0, 1)
+            with torch.no_grad():
+                infer_out, inp = trainer.model.forward(data_i, mode="inference")
+                vis = (make_grid(inp[:num_print]) + 1) / 2
+                ts_writer.add_image("train/infer_in", vis, iter_counter.total_steps_so_far)
+                vis = (make_grid(infer_out[:num_print]) + 1) / 2
+                vis = torch.clamp(vis, 0, 1)
+                ts_writer.add_image("train/infer_out", vis, iter_counter.total_steps_so_far)
+                generated = trainer.get_latest_generated()
+                for k, v in generated.items():
+                    if v is None:
+                        continue
+                    if "label" in k:
+                        vis = make_grid(v[:num_print].expand(-1, 3, -1, -1))[0]
+                        writer.add_single_label(k, vis, iter_counter.total_steps_so_far)
                     else:
-                        vis = make_grid(v[:num_print])
-                    writer.add_single_image(k, vis, iter_counter.total_steps_so_far)
+                        if v.size(1) == 3:
+                            vis = (make_grid(v[:num_print]) + 1) / 2
+                            vis = torch.clamp(vis, 0, 1)
+                        else:
+                            vis = make_grid(v[:num_print])
+                        writer.add_single_image(k, vis, iter_counter.total_steps_so_far)
         if iter_counter.needs_validation():
             print(
                 "saving the latest model (epoch %d, total_steps %d)"
