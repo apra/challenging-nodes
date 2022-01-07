@@ -1,7 +1,6 @@
 import SimpleITK
 import numpy as np
 import torch
-import matplotlib.pyplot as plt
 
 from evalutils import SegmentationAlgorithm
 from evalutils.validators import (
@@ -20,7 +19,7 @@ from model_submission.utils.transforms import basic_transform, normalize_cxr
 
 # This parameter adapts the paths between local execution and execution in docker. You can use this flag to switch between these two modes.
 # For building your docker, set this parameter to True. If False, it will run process.py locally for test purposes.
-execute_in_docker = False
+execute_in_docker = True
 
 
 class Nodulegeneration(SegmentationAlgorithm):
@@ -44,7 +43,7 @@ class Nodulegeneration(SegmentationAlgorithm):
 
         self.crop_size = 256
         self.net = TwostagendGenerator()
-        model_save_path = "C:\\Users\\e.marcus\\Models\\chalnode-checkpoints\\ssim551_long_rcnn_finetune\\latest_net_G.pth"
+        model_save_path = "model_submission/model/latest_net_G.pth"
         self.net = load_network_path(self.net, model_save_path, strict=True)
         self.net.eval()
 
@@ -54,6 +53,7 @@ class Nodulegeneration(SegmentationAlgorithm):
         mask_tensor = torch.Tensor(mask)
         original_tensor = self.transform(original_image)
         input_tensor = self.transform(masked_image)
+
         mask_tensor = torch.unsqueeze(mask_tensor, 0).float()
         input_tensor = torch.unsqueeze(input_tensor, 0).float()
         original_tensor = torch.unsqueeze(original_tensor, 0).float()
@@ -93,10 +93,8 @@ class Nodulegeneration(SegmentationAlgorithm):
 
             print("time for image: ", time.time()-t)
             result = cxr_img_scaled.copy()
-            result *= 4095  # TODO: undo normalization here correct?
-            nodule_images[j,:,:] = result
-            plt.imshow(result)
-            plt.show()
+            result *= 255  # same normalization they did as in the baseline
+            nodule_images[j, :, :] = result
         print('total time took ', time.time()-total_time)
         return SimpleITK.GetImageFromArray(nodule_images)
 

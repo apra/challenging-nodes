@@ -55,10 +55,11 @@ class CustomTrainDataset(BaseDataset):
         else:
             self.end_fold_idx = self.begin_fold_idx + self.fold_size - 1
 
+        #TODO: validation is disabled
         if self.mod == 'train':
-            self.dataset_size = self.full_dataset_size - self.fold_size
+            self.dataset_size = self.full_dataset_size
         elif self.mod == 'valid':
-            self.dataset_size = self.fold_size
+            self.dataset_size = 0
 
         self.transform = basic_transform()
 
@@ -89,7 +90,7 @@ class CustomTrainDataset(BaseDataset):
         # TODO make this process much faster, remove all useless checks
         # input image (real images)
         image_path = ''
-        index = self.get_true_index(index)
+        #index = self.get_true_index(index)
         try:
             image_path = self.paths_and_nodules[index][0]
             image_mask_bbox = self.paths_and_nodules[index][1]
@@ -102,9 +103,9 @@ class CustomTrainDataset(BaseDataset):
                                                                  rng=self.rng)
 
             #old
-            #cropped_image = normalize_cxr(cropped_image)  # divide 4095
+            cropped_image = normalize_cxr(cropped_image)  # divide 4095
             #new
-            cropped_image = cropped_image / np.max(cropped_image)
+            #cropped_image = cropped_image / np.max(cropped_image)
 
             cropped_masked_image, mask_array = mask_image(cropped_image, new_mask_bbox)
             full_image = np.array(normalize_cxr(full_image), dtype='float32')

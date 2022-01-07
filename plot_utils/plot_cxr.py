@@ -34,7 +34,7 @@ def plot_bounding_boxes(image, bbox_coords, change_bgr_to_rgb=False):
     plt.show()
 
 
-def plot_mha_scan(image_path: Path, preprocess_opencxr=False, include_metadata_bbox=True, metadata_location=METADATA_LOCATION):
+def plot_mha_scan(image_path: Path, preprocess_opencxr=False, include_metadata_bbox=False, metadata_location=METADATA_LOCATION):
     """
     Plot a .mha file, can be preprocessed with opencxr, bboxes of nodules can be included by metadata.
     Args:
@@ -57,7 +57,7 @@ def plot_mha_scan(image_path: Path, preprocess_opencxr=False, include_metadata_b
         bboxes = _metadata_extractor(image_name, metadata_location)
         plot_bounding_boxes(img_np, bboxes)
     else:
-        plt.imshow(img_np)
+        plt.imshow(img_np, cmap="gray")
         plt.show()
 
 

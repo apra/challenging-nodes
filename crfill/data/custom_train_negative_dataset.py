@@ -87,6 +87,7 @@ class CustomTrainNegativeDataset(BaseDataset):
         try:
             image_path = self.paths[index]
             image_mask_bbox = self.bboxes[index]
+            #image_mask_bbox = [267, 485, 57, 50]
             full_image = self.mha_loader(image_path)
             crop_size = self.opt.crop_around_mask_size
 
@@ -105,6 +106,10 @@ class CustomTrainNegativeDataset(BaseDataset):
             full_image_bbox = torch.Tensor([image_mask_bbox[0], image_mask_bbox[1], image_mask_bbox[0]+image_mask_bbox[2], image_mask_bbox[1]+image_mask_bbox[3]])
             full_image_tensor = torch.unsqueeze(torch.Tensor(full_image), 0)  # don't self.transform this -- rcnn does its own normalization
             image_tensor = self.transform(cropped_image)  # in this class we don't overlay a mask on the image
+
+            cropped_masked_image, mask_array = mask_image(cropped_image, new_mask_bbox)
+            masked_image_tensor = self.transform(cropped_masked_image)  # debug purposes only
+
             input_dict = {
                 'full_image_bbox': full_image_bbox.float(),  # needed for faster rcnn
                 #'full_image_mask_tensor': full_image_mask_tensor.float(),
@@ -114,6 +119,7 @@ class CustomTrainNegativeDataset(BaseDataset):
                 'real_image': image_tensor.float(),
                 'inputs': image_tensor.float(),
                 'mask': mask_tensor.float(),
+                'masked_image': masked_image_tensor.float()
             }
             return input_dict
         except FileNotFoundError:

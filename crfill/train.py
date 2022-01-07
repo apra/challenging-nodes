@@ -123,26 +123,27 @@ for epoch in iter_counter.training_epochs():
             trainer.save('latest')
             iter_counter.record_current_iter()
 
-            print("doing validation")
-            model.eval()
-            num = 0
-            psnr_total = 0
-            for ii, data_ii in enumerate(dataloader_val):
-                with torch.no_grad():
-                    generated,_ = model(data_ii, mode='inference')
-                    generated = generated.cpu()
-                generated = (generated+1)/2*255
-                gt = data_ii[input_name]
-                bsize, c, h, w = gt.shape
-                gt = (gt+1)/2*255
-                mse = ((generated-gt)**2).sum(3).sum(2).sum(1)
-                mse /= (c*h*w)
-                psnr = 10*torch.log10(255.0*255.0 / (mse+1e-8))
-                psnr_total += psnr.sum().item()
-                num += bsize
-            psnr_total /= num
-            ts_writer.add_scalar("val/psnr", psnr_total, iter_counter.total_steps_so_far)
-            model.train()
+            # TODO: disabled validation
+            # print("doing validation")
+            # model.eval()
+            # num = 0
+            # psnr_total = 0
+            # for ii, data_ii in enumerate(dataloader_val):
+            #     with torch.no_grad():
+            #         generated,_ = model(data_ii, mode='inference')
+            #         generated = generated.cpu()
+            #     generated = (generated+1)/2*255
+            #     gt = data_ii[input_name]
+            #     bsize, c, h, w = gt.shape
+            #     gt = (gt+1)/2*255
+            #     mse = ((generated-gt)**2).sum(3).sum(2).sum(1)
+            #     mse /= (c*h*w)
+            #     psnr = 10*torch.log10(255.0*255.0 / (mse+1e-8))
+            #     psnr_total += psnr.sum().item()
+            #     num += bsize
+            # psnr_total /= num
+            # ts_writer.add_scalar("val/psnr", psnr_total, iter_counter.total_steps_so_far)
+            # model.train()
     trainer.update_learning_rate(epoch)
     iter_counter.record_epoch_end()
     trainer.save('latest')

@@ -1,8 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from models.networks.utils import batch_conv2d, batch_transposeconv2d
-import pdb
+from model_submission.model.utils import batch_conv2d, batch_transposeconv2d
 
 
 def hardmax(similar):
