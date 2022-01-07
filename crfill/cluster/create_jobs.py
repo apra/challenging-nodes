@@ -48,8 +48,6 @@ def create_range(
 
 ranges = {"sigma": ("exponential", -3, 1), "beta_kl": ("exponential", -3, 1)}
 
-from itertools import product
-
 num_tasks = 16
 
 rng = np.random.default_rng(0)

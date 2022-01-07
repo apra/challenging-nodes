@@ -48,9 +48,12 @@ BaselineVAEOpts = {
     },
 }
 
+
 def conv3x3(in_channels, out_channels, stride=1):
     return torch.nn.Conv2d(in_channels, out_channels, kernel_size=3,
-                     stride=stride, padding=1, bias=False)
+                           stride=stride, padding=1, bias=False)
+
+
 # Residual block
 class ResidualBlock(torch.nn.Module):
     def __init__(self, in_channels, out_channels, stride=1, downsample=None):
@@ -62,11 +65,12 @@ class ResidualBlock(torch.nn.Module):
     def forward(self, x):
         residual = x
         out = self.conv1(x)
-        #out = self.relu(out)
+        # out = self.relu(out)
         out = self.conv2(out)
         out += residual
-        #out = self.relu(out)
+        # out = self.relu(out)
         return out
+
 
 class placelesionmodel(torch.nn.Module):
     @staticmethod
@@ -147,7 +151,7 @@ class placelesionmodel(torch.nn.Module):
             generated = {"coarse": coarse_image, "composed": composed_image}
             return g_loss, negative, generated
         elif mode == "discriminator":
-            d_loss = self.compute_discriminator_loss(negative, positive, mask)
+            d_loss = self.compute_discriminator_loss(negative, positive, mask, lesion_bbox)
             return d_loss, data["inputs"]
         elif mode == "inference":
             with torch.no_grad():
@@ -160,7 +164,7 @@ class placelesionmodel(torch.nn.Module):
             raise ValueError("|mode| is invalid")
 
     def create_optimizers(self, opt):
-        G_params = self.netG.get_param_list(opt.update_part)+[p for name, p in self.place_lesion.named_parameters()]
+        G_params = self.netG.get_param_list(opt.update_part) + [p for name, p in self.place_lesion.named_parameters()]
         # G_params = [p for name, p in self.netG.named_parameters() \
         #        if (not name.startswith("coarse"))]
         if opt.isTrain:
@@ -209,7 +213,7 @@ class placelesionmodel(torch.nn.Module):
                     "Loading DRCNN for continuing training not implemented yet"
                 )
         place_lesion = torch.nn.Sequential(
-            ResidualBlock(1,2),
+            ResidualBlock(1, 1),
         )
         return vaeModel, netD, netDRCNN, place_lesion
 
@@ -282,14 +286,17 @@ class placelesionmodel(torch.nn.Module):
                 )
         return G_losses
 
-    def place_addition_on_cxr(self, addition, starting_cxr, mask):
+    def place_addition_on_cxr(self, addition, starting_cxr, lesion_bbox):
+        max_attenuation = 0.25
         final_addition = addition.clone()
         new_addition = torch.empty_like(addition)
         threshold = 1 / 4096
-        final_addition[final_addition < threshold] = threshold
         starting_cxr = (starting_cxr + 1) / 2
+        starting_cxr[starting_cxr < threshold] = threshold
+        final_addition[final_addition < threshold] = threshold
+        addition = final_addition
         for i, (star, add) in enumerate(zip(starting_cxr, addition)):
-            new_addition[i] = add + 1 - add.max()
+            new_addition[i] = max_attenuation * add / add.max() + 1 - max_attenuation
 
         addition = new_addition
         if (
@@ -299,32 +306,37 @@ class placelesionmodel(torch.nn.Module):
 
             final_addition = torch.zeros_like(starting_cxr)
             for sample in range(final_addition.shape[0]):
-                full_height = starting_cxr[sample].shape[1]
-                full_width = starting_cxr[sample].shape[2]
-                height = addition[sample].shape[1]
-                width = addition[sample].shape[2]
+                x = lesion_bbox[sample][0].item()
+                y = lesion_bbox[sample][1].item()
+                w = lesion_bbox[sample][2].item()
+                h = lesion_bbox[sample][3].item()
+                width = addition[sample].shape[1]
+                height = addition[sample].shape[2]
 
-                rnd_x = np.random.randint(0, full_height - height)
-                rnd_y = np.random.randint(0, full_width - width)
+                if width > w-1:
+                    delta = width - w
+                    rnd_x = int(max(x - delta, 0))
+                else:
+                    max_x = max(x+1, x + w - width)
+                    rnd_x = np.random.randint(x, max_x)
+                if height > h-1:
+                    delta = height - h
+                    rnd_y = int(max(y - delta, 0))
+                else:
+                    max_y = max(y+1, y + h - height)
+                    rnd_y = np.random.randint(y, max_y)
+
                 final_addition[sample] = addition[sample].min()
-                final_addition[sample, :, rnd_x: rnd_x + height, rnd_y: rnd_y + width] = new_addition[sample]
-
-            addition = final_addition
-
-        if not self.opt.no_sharp_skip_connection:
-            threshold = 1 / 4095
-            starting_cxr[starting_cxr < threshold] = threshold
-            new_addition = addition.clone()
-            new_addition[addition < threshold] = threshold
-
-        return self.place_lesion(((starting_cxr * new_addition) - 0.5) / 0.5)
+                final_addition[sample, :, rnd_x: rnd_x + width, rnd_y: rnd_y + height] = addition[sample]
+        addition = final_addition
+        return self.place_lesion(((starting_cxr * addition) - 0.5) / 0.5)
 
     def compute_generator_loss(
-            self, negative, positive, mask, crop_bbox, lesion_bbox, cxr
+            self, negative, positive, mask, crop_bbox, lesion_bbox, cxr, cropped_lesion_bbox
     ):
         return NotImplementedError
 
-    def compute_discriminator_loss(self, negative, positive, desired_mask):
+    def compute_discriminator_loss(self, negative, positive, desired_mask, lesion_bbox):
         return NotImplementedError
 
     def generate_fake(self, inputs, mask):
