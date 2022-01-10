@@ -42,10 +42,19 @@ class Nodulegeneration(SegmentationAlgorithm):
             self.data = json.load(f)
 
         self.crop_size = 256
-        self.net = TwostagendGenerator()
-        model_save_path = "model_submission/model/latest_net_G.pth"
-        self.net = load_network_path(self.net, model_save_path, strict=True)
-        self.net.eval()
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        self.net1 = TwostagendGenerator()
+        self.net2 = TwostagendGenerator()
+        model_save_path1 = "model_submission/model/model1.pth"
+        model_save_path2 = "model_submission/model/model2.pth"
+        self.net1 = load_network_path(self.net1, model_save_path1, strict=True)
+        self.net1.to(self.device)
+        self.net2 = load_network_path(self.net1, model_save_path2, strict=True)
+        self.net2.to(self.device)
+
+        self.net1.eval()
+        self.net2.eval()
 
         self.transform = basic_transform()
 
@@ -54,14 +63,16 @@ class Nodulegeneration(SegmentationAlgorithm):
         original_tensor = self.transform(original_image)
         input_tensor = self.transform(masked_image)
 
-        mask_tensor = torch.unsqueeze(mask_tensor, 0).float()
-        input_tensor = torch.unsqueeze(input_tensor, 0).float()
-        original_tensor = torch.unsqueeze(original_tensor, 0).float()
+        mask_tensor = torch.unsqueeze(mask_tensor, 0).float().to(self.device)
+        input_tensor = torch.unsqueeze(input_tensor, 0).float().to(self.device)
+        original_tensor = torch.unsqueeze(original_tensor, 0).float().to(self.device)
         with torch.no_grad():
-            output = self.net(input_tensor, mask_tensor)
+            output1 = self.net1(input_tensor, mask_tensor)
+            output2 = self.net2(input_tensor, mask_tensor)
 
-        composed_image = output[1] * mask + original_tensor * (1 - mask)
-        composed_image_np = composed_image.numpy().reshape((self.crop_size, self.crop_size))
+        composed_output = (output1[1] + output2[1]) / 2
+        composed_image = composed_output * mask_tensor + original_tensor * (1 - mask_tensor)
+        composed_image_np = composed_image.cpu().numpy().reshape((self.crop_size, self.crop_size))
         return composed_image_np
 
     def predict(self, *, input_image: SimpleITK.Image) -> SimpleITK.Image:
@@ -97,6 +108,7 @@ class Nodulegeneration(SegmentationAlgorithm):
             nodule_images[j, :, :] = result
         print('total time took ', time.time()-total_time)
         return SimpleITK.GetImageFromArray(nodule_images)
+
 
 if __name__ == "__main__":
     Nodulegeneration().process()

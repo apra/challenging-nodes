@@ -26,8 +26,8 @@ RUN python -m pip install --user -rrequirements.txt
 COPY --chown=algorithm:algorithm process.py /opt/algorithm/
 
 # Entrypoint to run, entypoint.sh files executes process.py as a script
-#ENTRYPOINT python -m process $0 $@
-ENTRYPOINT ["bash", "entrypoint.sh"]
+ENTRYPOINT python -m process $0 $@
+#ENTRYPOINT ["bash", "entrypoint.sh"]
 
 ## ALGORITHM LABELS ##
 
