@@ -56,11 +56,11 @@ def conv3x3(in_channels, out_channels, stride=1):
 
 # Residual block
 class ResidualBlock(torch.nn.Module):
-    def __init__(self, in_channels, out_channels, stride=1, downsample=None):
+    def __init__(self, ch, stride=1, downsample=None):
         super(ResidualBlock, self).__init__()
-        self.conv1 = conv3x3(in_channels, out_channels, stride)
+        self.conv1 = conv3x3(ch, ch, stride)
         self.relu = torch.nn.ReLU(inplace=True)
-        self.conv2 = conv3x3(out_channels, in_channels)
+        self.conv2 = conv3x3(ch, ch)
 
     def forward(self, x):
         residual = x
@@ -213,7 +213,9 @@ class placelesionmodel(torch.nn.Module):
                     "Loading DRCNN for continuing training not implemented yet"
                 )
         place_lesion = torch.nn.Sequential(
-            ResidualBlock(1, 1),
+            torch.nn.Conv2d(1,3,3,1,1),
+            ResidualBlock(3),
+            torch.nn.Conv2d(3,1,3,1,1)
         )
         return vaeModel, netD, netDRCNN, place_lesion
 
