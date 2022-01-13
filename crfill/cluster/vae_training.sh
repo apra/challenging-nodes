@@ -78,11 +78,11 @@ LOGGING_DIR="$HOME/challenging-nodes/crfill/checkpoints"
 
 #Create output directory on scratch
 mkdir -p "$DATA"
-cp -ra /project/spapa/dataset_node21/ct_patches/images/. "$DATA"
+cp -ra /project/spapa/dataset_node21/ct_patches/. "$DATA"
 
 NAME="$EXPERIMENT_NAME""$DATE""-dwn$DOWNSAMPLE_1-beta$BETAKL_1-sigma$SIGMA_1-latentsize$LATENTSIZE_1-lr$LEARNINGRATE_1"
 
-STANDARD_PARAMS="--seed 0 --batchSize 64 --niter_decay 100 --dataset_mode_train custom_train_vae --dataset_mode custom_train_vae --train_image_dir /data --preprocess_mode none --validation_freq 200000 --niter 900 --display_freq 10000 --model vae"
+STANDARD_PARAMS="--seed 0 --batchSize 64 --niter_decay 100 --dataset_mode_train custom_train_vae --dataset_mode custom_train_vae --train_image_dir /data/images --preprocess_mode none --validation_freq 200000 --niter 900 --display_freq 10000 --model vae"
 
 GPUID=0
 
