@@ -7,7 +7,8 @@ import importlib
 import torch.utils.data
 from data.base_dataset import BaseDataset
 from util.metadata_utils import get_paths_and_nodules, get_paths_negatives, get_paths
-
+import pickle
+from pathlib import Path
 
 def find_dataset_using_name(dataset_name):
     # Given the option --dataset [datasetname],
@@ -66,12 +67,21 @@ def create_dataloader_trainval(opt):
                                               opt.include_mimic, opt.node21_resample_count)
         paths_negative = get_paths_negatives(opt.train_image_dir)
         paths_and_nodules = [paths_positive, paths_negative]
+    elif opt.model == 'vae':
+        paths_and_nodules = get_paths(opt.train_image_dir)
+        metadata_file = Path(opt.train_image_dir).parent / Path('metadata.pkl')
+        with open(metadata_file, "rb") as f:
+            metadata = pickle.load(f)
     else:
         paths_and_nodules = get_paths(opt.train_image_dir)
+
     dataset = find_dataset_using_name(opt.dataset_mode_train)
     instance = dataset()
     print(dataset)
-    instance.initialize(opt, paths_and_nodules, 'train')
+    if opt.model == 'vae':
+        instance.initialize(opt,paths_and_nodules, 'train', metadata)
+    else:
+        instance.initialize(opt, paths_and_nodules, 'train')
     print("dataset [%s] of size %d was created" %
           (type(instance).__name__, len(instance)))
     print(f"Num workers: {int(opt.num_workers)}. Threads available: {torch.get_num_threads()}")

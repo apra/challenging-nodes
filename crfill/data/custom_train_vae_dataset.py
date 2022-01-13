@@ -12,7 +12,7 @@ from torchvision.transforms import Compose, ToTensor
 from data.custom_transformations import mask_image, crop_around_mask_bbox, normalize_cxr, mask_convention_setter, create_random_bboxes
 from util.metadata_utils import get_paths_negatives
 from PIL import Image
-
+from pathlib import Path
 class CustomTrainVAEDataset(BaseDataset):
     """Custom dataset class for negative xrays -- no nodules. Expects that within the main datafolder there exists a folder
        'negative', that contains negative images in any subdirectory structure. If metadata.csv exists in 'negative' it will read it,
@@ -32,7 +32,7 @@ class CustomTrainVAEDataset(BaseDataset):
                             help='number of folds for the validation')
         return parser
 
-    def initialize(self, opt, paths, mod):
+    def initialize(self, opt, paths, mod, metadata=None):
         self.opt = opt
         self.mod = mod
         self.paths = paths
@@ -52,14 +52,18 @@ class CustomTrainVAEDataset(BaseDataset):
         elif self.mod == 'valid':
             self.dataset_size = self.fold_size
 
-        transform_list = []
-        transform_list += [torchvision.transforms.ToTensor()]
-        transform_list += [torchvision.transforms.RandomAffine(degrees=90, translate=(0.1, 0.3), scale=(0.5, 1.))]
-
-        self.transform = torchvision.transforms.Compose(transform_list)
-
+        self.transform_list = []
+        self.transform_list += [torchvision.transforms.ToTensor()]
+        self.metadata = metadata
         self.rng = np.random.default_rng(seed=opt.seed)
 
+    def get_metadata(self, path):
+        index = self.metadata["id"].index(Path(path).name[:-4])
+        return {
+            "id": self.metadata["id"][index],
+            "dim0": self.metadata["dim0"][index],
+            "dim1": self.metadata["dim1"][index]
+        }
     def get_true_index(self, index):
         if self.mod == "train":
             if index < self.begin_fold_idx:
@@ -77,11 +81,15 @@ class CustomTrainVAEDataset(BaseDataset):
         index = self.get_true_index(index)
         try:
             image_path = self.paths[index]
-            full_image = Image.open(image_path)
-
-            image_tensor = self.transform(full_image)
+            full_image = np.load(image_path)['arr_0']
+            meta = self.get_metadata(image_path)
+            self.transform_list += [torchvision.transforms.RandomAffine(degrees=90, translate=(0.1, 0.3), scale=(0.75, 1.), fill=np.min(full_image))]
+            transform = torchvision.transforms.Compose(self.transform_list)
+            image_tensor = transform(full_image)
             input_dict = {
-                'inputs': image_tensor.float()
+                'inputs': image_tensor.float(),
+                'height': meta['dim0'],
+                'weight': meta['dim1']
             }
             return input_dict
         except FileNotFoundError:

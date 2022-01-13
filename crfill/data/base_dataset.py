@@ -18,7 +18,7 @@ class BaseDataset(data.Dataset):
     def modify_commandline_options(parser, is_train):
         return parser
 
-    def initialize(self, opt, path_and_nodules, mode):
+    def initialize(self, opt, path_and_nodules, mode, metadata=None):
         pass
 
 

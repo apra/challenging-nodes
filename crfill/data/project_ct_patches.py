@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.ndimage as ndi
 from skimage.measure import regionprops
+import pickle
 
 CORRECTION = 255
 
@@ -36,7 +37,7 @@ def get_nodule_bbox(seg_image):
     return [p.bbox for p in properties]
 
 
-def generate_2d(X_ct, p_lambda=0.85):
+def generate_2d(X_ct, seg_mask, p_lambda=0.85):
     '''
     Generate 2D digitally reconstructed radiographs from CT scan. (DRR, fake CXR, simulated CXR)
     X_ct: CT scan
@@ -50,8 +51,12 @@ def generate_2d(X_ct, p_lambda=0.85):
     X_ct = X_ct / 1000.0
     X_ct *= p_lambda
     X_ct[X_ct > 1] = 1
+    # isolate the lesion only, assumes 0 CT number outside lesion
+    X_ct = seg_mask * X_ct
     # 1.0 0.4454 0.5866707652
+    # project the lesion
     X_ct_2d = np.mean(np.exp(X_ct), axis=1)
+    # projected values are between e^0=1 and e^1=e
     return X_ct_2d
 
 
@@ -170,39 +175,55 @@ def poisson_blend(nodule, lung_photo, x0, x1, y0, y1):
         return np.array(lung_photo)
 
 
-def process_CT_patches(ct_path, seg_path, required_diameter):
+def process_CT_patches(ct_path, seg_path):
     '''
     Resample ct nodule patches and generates fake CXR nodule patches.
     '''
+    # CT patches are 50x50x50mm resampled to spacing of 1x1x1mm
     ct_image = SimpleITK.GetArrayFromImage(SimpleITK.ReadImage(ct_path))
+    # if ct_image.min() < -1024:
+    #     fig, ax = plt.subplots(10, 5, figsize=(50, 100))
+    #     ax = ax.flatten()
+    #     for i, slice in enumerate(ct_image):
+    #         im = ax[i].imshow(slice, vmin=-3024, vmax=3100)
+    #     fig.subplots_adjust(right=0.8)
+    #     cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
+    #     fig.colorbar(im, cax=cbar_ax)
+    #
+    #     plt.savefig("test.png")
     seg_img = SimpleITK.GetArrayFromImage(SimpleITK.ReadImage(seg_path))
-    diameter = get_nodule_diameter(seg_img)
-    scaling_factor = diameter / required_diameter
-
-    image_resampled, new_spacing = resample(ct_image, voxel_spacing=[1, 1, 1],
-                                            new_spacing=[scaling_factor, scaling_factor, scaling_factor])
-    seg_image_resampled, new_spacing = resample(seg_img, voxel_spacing=[1, 1, 1],
-                                                new_spacing=[scaling_factor, scaling_factor, scaling_factor])
+    # diameter = get_nodule_diameter(seg_img)
+    # scaling_factor = diameter / required_diameter
+    #
+    # image_resampled, new_spacing = resample(ct_image, voxel_spacing=[1, 1, 1],
+    #                                         new_spacing=[scaling_factor, scaling_factor, scaling_factor])
+    # seg_image_resampled, new_spacing = resample(seg_img, voxel_spacing=[1, 1, 1],
+    #                                             new_spacing=[scaling_factor, scaling_factor, scaling_factor])
     # put black values to the ct patch outside nodules.
-    image_resampled[seg_image_resampled <= np.min(seg_image_resampled)] = np.min(image_resampled)
+    ct_image[ct_image <= np.min(seg_img)] = np.min(ct_image)
+
     # generate 2D digitially reconstructed CXR.
-    X_ct_2d_resampled = generate_2d(image_resampled)
+    X_ct_2d = generate_2d(ct_image, seg_img)
+
     # X_ct_2d_resampled[seg_image_resampled<=np.min(seg_image_resampled)]=np.min(X_ct_2d_resampled)
 
-    X_ct_2d_resampled = convert_to_range_0_1(X_ct_2d_resampled)
+    # X_ct_2d_resampled = convert_to_range_0_1(X_ct_2d_resampled)
 
-    bboxes = get_nodule_bbox(seg_image_resampled)
+    bboxes = get_nodule_bbox(seg_img)
+
     nodules = []
     nodules_segs = []
-    seg_image = np.sum(seg_image_resampled, axis=1)
-    seg_image[seg_image != 0] = 255
+    seg_image = np.sum(seg_img, axis=1)
+    seg_image[seg_image > 0] = 1.
     seg_image = seg_image.astype(int)
     for bbox in bboxes:
         min_row, min_col, max_row, max_col = bbox
-        nodules.append(X_ct_2d_resampled[min_row:max_row, min_col:max_col])
+        nodules.append(X_ct_2d[min_row:max_row, min_col:max_col])
         nodules_segs.append(seg_image[min_row:max_row, min_col:max_col])
 
     return nodules, nodules_segs
+
+    # return None, None, max_val, min_val
 
 
 def make_subplots(rows, cols, figsize, kw=None):
@@ -224,14 +245,14 @@ def savefig(path, *, fig=None, tight=True, force_pdf=True, tight_layout_params=N
             tight_layout_params = {}
 
         fig.tight_layout(**tight_layout_params)
-    if force_pdf and path.suffix != '.pdf':
-        fig.savefig(path.with_suffix(".pdf"))
+    # if force_pdf and path.suffix != '.pdf':
+    #     fig.savefig(path.with_suffix(".pdf"))
 
     fig.savefig(path)
     plt.close(fig)
 
 
-def place_nodule(nodule, final_size):
+def place_nodule(nodule, final_size, mode="nodule"):
     assert nodule.shape[0] <= final_size[0] and nodule.shape[1] <= final_size[1]
     nodule_shape = nodule.shape
     center_nodule = (nodule_shape[0] // 2, nodule_shape[1] // 2)
@@ -240,14 +261,19 @@ def place_nodule(nodule, final_size):
     x_max = x_min + nodule_shape[0]
     y_min = center_final[1] - center_nodule[1]
     y_max = y_min + nodule_shape[1]
-    final = np.zeros(final_size)
+    if mode == "nodule":
+        final = np.ones(final_size)
+    elif mode == "segmentation":
+        final = np.zeros(final_size)
+    else:
+        raise ValueError(f"Mode: {mode} not recognized.")
     final[x_min:x_max, y_min:y_max] = nodule
     return final
 
-LESION_SIZE=32
 
 ct_patches_folder = '../../../data/dataset_node21/ct_patches/nodule_patches'
 ct_segs_folder = '../../../data/dataset_node21/ct_patches/segmentation'
+output_folder = Path('../../../data/dataset_node21/ct_patches/projected')
 output_folder_images = Path('../../../data/dataset_node21/ct_patches/projected/images')
 output_folder_segs = Path('../../../data/dataset_node21/ct_patches/projected/segmentation')
 temp_images = Path('images')
@@ -258,24 +284,64 @@ output_folder_segs.mkdir(exist_ok=True, parents=True)
 ct_patches = [Path(ct_patches_folder) / f for f in listdir(ct_patches_folder) if isfile(join(ct_patches_folder, f))]
 ct_segs = [Path(ct_segs_folder) / f for f in listdir(ct_segs_folder) if isfile(join(ct_segs_folder, f))]
 
+
 def simple_imshow(image, ax):
     ax.imshow(image)
     ax.get_xaxis().set_visible(None)
     ax.get_yaxis().set_visible(None)
 
-for ct_path, ct_seg in zip(ct_patches, ct_segs):
+
+# metadata = "id,h,w\n"
+accumulated_nodules = []
+accumulated_segs = []
+LESION_SIZE = 64
+metadata = {"id": [], "dim0":[], "dim1": []}
+for j, (ct_path, ct_seg) in enumerate(zip(ct_patches, ct_segs)):
     print(ct_path.name[:-4])
-    nodules, segs = process_CT_patches(str(ct_path), str(ct_seg), LESION_SIZE-1)
-    print(len(nodules))
+    image = SimpleITK.ReadImage(str(ct_path))
+
+    nodules, segs = process_CT_patches(str(ct_path), str(ct_seg))
     for i, (nod, seg) in enumerate(zip(nodules, segs)):
-        print(nod.shape)
-        final_nodule = place_nodule(nod, (LESION_SIZE, LESION_SIZE))*255
-        final_seg = place_nodule(seg, (LESION_SIZE, LESION_SIZE))
-        cv2.imwrite(str(output_folder_images/Path(f'{ct_path.name[:-4]}_{i}.png')),final_nodule)
-        cv2.imwrite(str(output_folder_segs/Path(f'{ct_seg.name[:-4]}_{i}.png')),final_seg)
-        # fig, ax = make_subplots(2, 2, figsize=(15, 30), kw={'dpi': 100})
-        # simple_imshow(final_nodule, ax[0])
-        # simple_imshow(nod, ax[1])
-        # simple_imshow(final_seg, ax[2])
-        # simple_imshow(seg, ax[3])
-        # savefig(temp_images/Path(f"test{i}.png"))
+        nodule_id = f'{ct_path.name[:-4]}_{i}'
+
+        final_nodule = place_nodule(nod, (LESION_SIZE, LESION_SIZE), mode="nodule")
+        final_seg = place_nodule(seg, (LESION_SIZE, LESION_SIZE), mode="segmentation")
+
+        metadata["id"].append(nodule_id)
+        metadata["dim0"].append(nod.shape[0])
+        metadata["dim1"].append(nod.shape[1])
+
+        accumulated_nodules.append(final_nodule)
+        accumulated_segs.append(final_seg)
+
+min_value = 10
+max_value = -10
+for nodule in accumulated_nodules:
+    if nodule.max() > max_value:
+        max_value = nodule.max()
+    if nodule.min() < min_value:
+        min_value = nodule.min()
+
+metadata['min'] = min_value
+metadata['max'] = max_value
+
+for i,(nodule, seg) in enumerate(zip(accumulated_nodules, accumulated_segs)):
+    if nodule.max() > max_value:
+        max_value = nodule.max()
+    if nodule.min() < min_value:
+        min_value = nodule.min()
+
+    nodule = (nodule-metadata['min'])/(metadata['max']-metadata['min'])
+
+    np.savez(str(output_folder_images / Path(f'{metadata["id"][i]}.npz')), nodule)
+    np.savez(str(output_folder_segs / Path(f'{metadata["id"][i]}_seg.npz')), seg)
+    #
+    # fig, ax = make_subplots(2, 2, figsize=(15, 30), kw={'dpi': 100})
+    # simple_imshow(final_nodule, ax[0])
+    # simple_imshow(nod, ax[1])
+    # simple_imshow(final_seg, ax[2])
+    # simple_imshow(seg, ax[3])
+    # savefig(temp_images / Path(f"test{j}.png"))
+
+with open(output_folder / Path("metadata.pkl"), "wb") as f:
+    pickle.dump(metadata, f)
