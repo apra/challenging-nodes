@@ -46,7 +46,16 @@ ts_writer = tensorboard.SummaryWriter(f"{opt.checkpoints_dir}/tensorboard")
 
 trainer.save("latest")
 
+
 # torch.multiprocessing.set_sharing_strategy('file_system')
+def contrast_boosting(tensor):
+    if len(tensor.shape) > 3:
+        boosted_tensor = torch.zeros_like(tensor)
+        for i, sample in enumerate(tensor):
+            boosted_tensor[i] = (sample - sample.min()) / (1e-6 + sample.max() - sample.min())
+
+        return boosted_tensor
+
 
 for epoch in iter_counter.training_epochs():
     iter_counter.record_epoch_start(epoch)
@@ -73,17 +82,17 @@ for epoch in iter_counter.training_epochs():
             # ts_writer.add_image('inputs',
             #                 draw_bounding_boxes(data_i['full_image'],data_i['bounding_box']),
             #                 iter_counter.total_steps_so_far)
-            ts_writer.add_image(
-                "train/original_cropped",
-                make_grid((data_i[input_name][:num_print])),
-                iter_counter.total_steps_so_far,
-            )
+            # ts_writer.add_image(
+            #     "train/original_cropped",
+            #     make_grid((data_i[input_name][:num_print])),
+            #     iter_counter.total_steps_so_far,
+            # )
 
             out = trainer.model.forward(data_i["inputs"])
             infer_out = out["reconstructed"]
-            vis = make_grid(data_i["inputs"][:num_print])
+            vis = make_grid(contrast_boosting(data_i["inputs"][:num_print]))
             ts_writer.add_image("train/infer_in", vis, iter_counter.total_steps_so_far)
-            vis = make_grid(infer_out[:num_print])
+            vis = make_grid(contrast_boosting(infer_out[:num_print]))
             vis = torch.clamp(vis, 0, 1)
             ts_writer.add_image("train/infer_out", vis, iter_counter.total_steps_so_far)
         if iter_counter.needs_validation():

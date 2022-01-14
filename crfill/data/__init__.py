@@ -94,7 +94,10 @@ def create_dataloader_trainval(opt):
     )
     dataset = find_dataset_using_name(opt.dataset_mode_train)
     instance = dataset()
-    instance.initialize(opt, paths_and_nodules, 'valid')
+    if opt.model == 'vae':
+        instance.initialize(opt, paths_and_nodules, 'valid', metadata)
+    else:
+        instance.initialize(opt, paths_and_nodules, 'valid')
     print("dataset [%s] of size %d was created" %
           (type(instance).__name__, len(instance)))
     dataloader_val = torch.utils.data.DataLoader(

@@ -9,10 +9,13 @@ import numpy as np
 import csv
 import SimpleITK as sitk
 from torchvision.transforms import Compose, ToTensor
-from data.custom_transformations import mask_image, crop_around_mask_bbox, normalize_cxr, mask_convention_setter, create_random_bboxes
+from data.custom_transformations import mask_image, crop_around_mask_bbox, normalize_cxr, mask_convention_setter, \
+    create_random_bboxes
 from util.metadata_utils import get_paths_negatives
 from PIL import Image
 from pathlib import Path
+
+
 class CustomTrainVAEDataset(BaseDataset):
     """Custom dataset class for negative xrays -- no nodules. Expects that within the main datafolder there exists a folder
        'negative', that contains negative images in any subdirectory structure. If metadata.csv exists in 'negative' it will read it,
@@ -53,17 +56,21 @@ class CustomTrainVAEDataset(BaseDataset):
             self.dataset_size = self.fold_size
 
         self.transform_list = []
-        self.transform_list += [torchvision.transforms.ToTensor()]
+        # self.transform_list += [torchvision.transforms.ToTensor()]
         self.metadata = metadata
         self.rng = np.random.default_rng(seed=opt.seed)
 
     def get_metadata(self, path):
-        index = self.metadata["id"].index(Path(path).name[:-4])
+        try:
+            index = self.metadata["id"].index(Path(path).name[:-4])
+        except:
+            print("wtf is going on ")
         return {
             "id": self.metadata["id"][index],
             "dim0": self.metadata["dim0"][index],
             "dim1": self.metadata["dim1"][index]
         }
+
     def get_true_index(self, index):
         if self.mod == "train":
             if index < self.begin_fold_idx:
@@ -81,15 +88,25 @@ class CustomTrainVAEDataset(BaseDataset):
         index = self.get_true_index(index)
         try:
             image_path = self.paths[index]
-            full_image = np.load(image_path)['arr_0']
+            full_image = torch.Tensor(np.load(image_path)['arr_0']).unsqueeze(0)
             meta = self.get_metadata(image_path)
-            self.transform_list += [torchvision.transforms.RandomAffine(degrees=90, translate=(0.1, 0.3), scale=(0.75, 1.), fill=np.min(full_image))]
-            transform = torchvision.transforms.Compose(self.transform_list)
-            image_tensor = transform(full_image)
+            height = meta['dim0']
+            width = meta['dim1']
+            if self.rng.binomial(1, .5) > 0.1:
+                image_tensor = torch.transpose(full_image, 1, 2)
+                height = meta['dim1']
+                width = meta['dim0']
+            else:
+                image_tensor = full_image
+
+            # self.transform_list += [
+            #     torchvision.transforms.RandomAffine(degrees=90, fill=float(full_image.min()), interpolation=torchvision.transforms.InterpolationMode.BILINEAR)]
+            # transform = torchvision.transforms.Compose(self.transform_list)
+            # image_tensor = transform(full_image)
             input_dict = {
                 'inputs': image_tensor.float(),
-                'height': meta['dim0'],
-                'weight': meta['dim1']
+                'height': height,
+                'weight': width
             }
             return input_dict
         except FileNotFoundError:
