@@ -52,7 +52,9 @@ def contrast_boosting(tensor):
     if len(tensor.shape) > 3:
         boosted_tensor = torch.zeros_like(tensor)
         for i, sample in enumerate(tensor):
-            boosted_tensor[i] = (sample - sample.min()) / (1e-6 + sample.max() - sample.min())
+            boosted_tensor[i] = (sample - sample.min()) / (
+                1e-6 + sample.max() - sample.min()
+            )
 
         return boosted_tensor
 

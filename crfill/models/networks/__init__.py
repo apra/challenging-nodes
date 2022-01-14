@@ -27,7 +27,7 @@ def find_network_using_name(target_network_name, filename):
     return network
 
 
-def modify_commandline_options(parser, is_train, skip_generator = True):
+def modify_commandline_options(parser, is_train, skip_generator=True):
     opt, _ = parser.parse_known_args()
     if not skip_generator:
         netG_cls = find_network_using_name(opt.netG, "generator")

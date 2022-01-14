@@ -80,27 +80,30 @@ class ArrangeplacelesionModel(placelesionmodel):
         cropped_lesion_bbox[:, 3] = lesion_bbox[:, 3] - lesion_bbox[:, 1]
 
         if mode == "generator":
-            (
-                g_loss,
-                composed_image,
-                _,
-                _,
-            ) = self.compute_generator_loss(
-                negative, positive, mask, crop_bbox, lesion_bbox, cxr, cropped_lesion_bbox
+            (g_loss, composed_image, _, _,) = self.compute_generator_loss(
+                negative,
+                positive,
+                mask,
+                crop_bbox,
+                lesion_bbox,
+                cxr,
+                cropped_lesion_bbox,
             )
             generated = {
                 "composed": composed_image,
             }
             return g_loss, negative, generated
         elif mode == "discriminator":
-            d_loss = self.compute_discriminator_loss(negative, positive, mask, cropped_lesion_bbox)
+            d_loss = self.compute_discriminator_loss(
+                negative, positive, mask, cropped_lesion_bbox
+            )
             return d_loss, negative
         elif mode == "inference":
             with torch.no_grad():
-                lesion = self.generate_fake(
-                    negative, mask
+                lesion = self.generate_fake(negative, mask)
+                composed_image = self.place_addition_on_cxr(
+                    lesion, negative, cropped_lesion_bbox
                 )
-                composed_image = self.place_addition_on_cxr(lesion, negative, cropped_lesion_bbox)
             return composed_image, negative
         else:
             raise ValueError("|mode| is invalid")
@@ -114,10 +117,10 @@ class ArrangeplacelesionModel(placelesionmodel):
         D_losses = {}
         if not self.opt.no_gan_loss:
             with torch.no_grad():
-                lesion = self.generate_fake(
-                    negative, mask
+                lesion = self.generate_fake(negative, mask)
+                composed_image = self.place_addition_on_cxr(
+                    lesion, negative, lesion_bbox
                 )
-                composed_image = self.place_addition_on_cxr(lesion, negative, lesion_bbox)
 
             composed_image = composed_image.detach()
             composed_image.requires_grad_()
@@ -135,7 +138,7 @@ class ArrangeplacelesionModel(placelesionmodel):
     def place_using_bbox(self, base_image, crop_image, bbox):
         c_x1, c_y1, c_w, c_h = bbox.int()
         try:
-            base_image[:, c_y1: c_y1 + c_h, c_x1: c_x1 + c_w] = (crop_image + 1) / 2
+            base_image[:, c_y1 : c_y1 + c_h, c_x1 : c_x1 + c_w] = (crop_image + 1) / 2
         except RuntimeError:
             print(crop_image)
             print(base_image)
@@ -143,16 +146,16 @@ class ArrangeplacelesionModel(placelesionmodel):
             print(base_image.shape)
 
     def compute_generator_loss(
-            self, negative, positive, mask, crop_bbox, lesion_bbox, cxr, cropped_lesion_bbox
+        self, negative, positive, mask, crop_bbox, lesion_bbox, cxr, cropped_lesion_bbox
     ):
         # if not self.opt.no_ganFeat_loss:
         #     raise NotImplementedError
         if self.opt.vgg_loss:
             raise NotImplementedError
-        lesion = self.generate_fake(
-            negative, mask
+        lesion = self.generate_fake(negative, mask)
+        composed_image = self.place_addition_on_cxr(
+            lesion, negative, cropped_lesion_bbox
         )
-        composed_image = self.place_addition_on_cxr(lesion, negative, cropped_lesion_bbox)
 
         fake_cxr = cxr
         for i in range(len(crop_bbox)):

@@ -87,10 +87,14 @@ for epoch in iter_counter.training_epochs():
             with torch.no_grad():
                 infer_out, inp = trainer.model.forward(data_i, mode="inference")
                 vis = (make_grid(inp[:num_print]) + 1) / 2
-                ts_writer.add_image("train/infer_in", vis, iter_counter.total_steps_so_far)
+                ts_writer.add_image(
+                    "train/infer_in", vis, iter_counter.total_steps_so_far
+                )
                 vis = (make_grid(infer_out[:num_print]) + 1) / 2
                 vis = torch.clamp(vis, 0, 1)
-                ts_writer.add_image("train/infer_out", vis, iter_counter.total_steps_so_far)
+                ts_writer.add_image(
+                    "train/infer_out", vis, iter_counter.total_steps_so_far
+                )
                 generated = trainer.get_latest_generated()
                 for k, v in generated.items():
                     if v is None:

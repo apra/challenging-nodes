@@ -590,7 +590,7 @@ class vaemodel(nn.Module):
         decoder_output = self.decoder(z)
         # x_recon = decoder_output
         # x_recon = torch.clamp(decoder_output, 0, 1)
-        x_recon = decoder_output#.sigmoid()
+        x_recon = decoder_output  # .sigmoid()
         dist = dists.Normal(x_recon, sigma)
         log_p_x = dist.log_prob(x)
         return log_p_x, x_recon

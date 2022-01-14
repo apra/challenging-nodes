@@ -50,8 +50,9 @@ BaselineVAEOpts = {
 
 
 def conv3x3(in_channels, out_channels, stride=1):
-    return torch.nn.Conv2d(in_channels, out_channels, kernel_size=3,
-                           stride=stride, padding=1, bias=False)
+    return torch.nn.Conv2d(
+        in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False
+    )
 
 
 # Residual block
@@ -118,7 +119,12 @@ class placelesionmodel(torch.nn.Module):
         )
         self.ByteTensor = torch.cuda.ByteTensor if self.use_gpu() else torch.ByteTensor
 
-        self.netG, self.netD, self.netDRCNN, self.place_lesion = self.initialize_networks(opt)
+        (
+            self.netG,
+            self.netD,
+            self.netDRCNN,
+            self.place_lesion,
+        ) = self.initialize_networks(opt)
 
         self.netG.load()
         if opt.isTrain and opt.load_pretrained_d is not None:
@@ -151,20 +157,22 @@ class placelesionmodel(torch.nn.Module):
             generated = {"coarse": coarse_image, "composed": composed_image}
             return g_loss, negative, generated
         elif mode == "discriminator":
-            d_loss = self.compute_discriminator_loss(negative, positive, mask, lesion_bbox)
+            d_loss = self.compute_discriminator_loss(
+                negative, positive, mask, lesion_bbox
+            )
             return d_loss, data["inputs"]
         elif mode == "inference":
             with torch.no_grad():
                 lesion = self.generate_fake(negative, mask)
-                composed_image = self.place_addition_on_cxr(
-                    lesion, negative, mask
-                )
+                composed_image = self.place_addition_on_cxr(lesion, negative, mask)
             return composed_image, negative
         else:
             raise ValueError("|mode| is invalid")
 
     def create_optimizers(self, opt):
-        G_params = self.netG.get_param_list(opt.update_part) + [p for name, p in self.place_lesion.named_parameters()]
+        G_params = self.netG.get_param_list(opt.update_part) + [
+            p for name, p in self.place_lesion.named_parameters()
+        ]
         # G_params = [p for name, p in self.netG.named_parameters() \
         #        if (not name.startswith("coarse"))]
         if opt.isTrain:
@@ -213,9 +221,9 @@ class placelesionmodel(torch.nn.Module):
                     "Loading DRCNN for continuing training not implemented yet"
                 )
         place_lesion = torch.nn.Sequential(
-            torch.nn.Conv2d(1,3,3,1,1),
+            torch.nn.Conv2d(1, 3, 3, 1, 1),
             ResidualBlock(3),
-            torch.nn.Conv2d(3,1,3,1,1)
+            torch.nn.Conv2d(3, 1, 3, 1, 1),
         )
         return vaeModel, netD, netDRCNN, place_lesion
 
@@ -225,7 +233,7 @@ class placelesionmodel(torch.nn.Module):
 
     def preprocess_input(self, data):
         if (
-                self.use_gpu()
+            self.use_gpu()
         ):  # this command is irrelevant, all data will already be at the GPU due to DataParallel in pix2pixtrainer
             data["neg_cropped_normalized_cxr"] = data[
                 "neg_cropped_normalized_cxr"
@@ -245,14 +253,14 @@ class placelesionmodel(torch.nn.Module):
         )
 
     def g_image_loss(
-            self,
-            coarse_image,
-            negative,
-            composed_image,
-            positive,
-            mask,
-            composed_full_image,
-            full_image_bbox,
+        self,
+        coarse_image,
+        negative,
+        composed_image,
+        positive,
+        mask,
+        composed_full_image,
+        full_image_bbox,
     ):
         G_losses = {}
 
@@ -267,24 +275,24 @@ class placelesionmodel(torch.nn.Module):
             pred_fake, pred_real = self.discriminate(composed_image, positive, mask)
 
             G_losses["GAN"] = (
-                    self.criterionGAN(pred_fake, True, for_discriminator=False)
-                    * self.opt.generator_weight
+                self.criterionGAN(pred_fake, True, for_discriminator=False)
+                * self.opt.generator_weight
             )
 
         if self.opt.vgg_loss and not self.opt.no_fine_loss:
             G_losses["VGG"] = (
-                    self.criterionVGG(negative, positive) * self.opt.lambda_vgg
+                self.criterionVGG(negative, positive) * self.opt.lambda_vgg
             )
         if not self.opt.no_l1_loss:
             if coarse_image is not None:
                 G_losses["L1_coarse"] = (
-                        torch.nn.functional.l1_loss(coarse_image, negative)
-                        * self.opt.beta_l1
+                    torch.nn.functional.l1_loss(coarse_image, negative)
+                    * self.opt.beta_l1
                 )
             if not self.opt.no_fine_loss:
                 G_losses["L1_fine"] = (
-                        torch.nn.functional.l1_loss(composed_image, negative)
-                        * self.opt.beta_l1
+                    torch.nn.functional.l1_loss(composed_image, negative)
+                    * self.opt.beta_l1
                 )
         return G_losses
 
@@ -302,8 +310,8 @@ class placelesionmodel(torch.nn.Module):
 
         addition = new_addition
         if (
-                addition.shape[2] < starting_cxr.shape[2]
-                or addition.shape[3] < starting_cxr.shape[3]
+            addition.shape[2] < starting_cxr.shape[2]
+            or addition.shape[3] < starting_cxr.shape[3]
         ):
 
             final_addition = torch.zeros_like(starting_cxr)
@@ -315,26 +323,28 @@ class placelesionmodel(torch.nn.Module):
                 width = addition[sample].shape[1]
                 height = addition[sample].shape[2]
 
-                if width > w-1:
+                if width > w - 1:
                     delta = width - w
                     rnd_x = int(max(x - delta, 0))
                 else:
-                    max_x = max(x+1, x + w - width)
+                    max_x = max(x + 1, x + w - width)
                     rnd_x = np.random.randint(x, max_x)
-                if height > h-1:
+                if height > h - 1:
                     delta = height - h
                     rnd_y = int(max(y - delta, 0))
                 else:
-                    max_y = max(y+1, y + h - height)
+                    max_y = max(y + 1, y + h - height)
                     rnd_y = np.random.randint(y, max_y)
 
                 final_addition[sample] = addition[sample].min()
-                final_addition[sample, :, rnd_x: rnd_x + width, rnd_y: rnd_y + height] = addition[sample]
+                final_addition[
+                    sample, :, rnd_x : rnd_x + width, rnd_y : rnd_y + height
+                ] = addition[sample]
         addition = final_addition
         return self.place_lesion(((starting_cxr * addition) - 0.5) / 0.5)
 
     def compute_generator_loss(
-            self, negative, positive, mask, crop_bbox, lesion_bbox, cxr, cropped_lesion_bbox
+        self, negative, positive, mask, crop_bbox, lesion_bbox, cxr, cropped_lesion_bbox
     ):
         return NotImplementedError
 
@@ -392,10 +402,10 @@ class placelesionmodel(torch.nn.Module):
             real = []
             for p in pred:
                 fake.append([tensor[: tensor.size(0) // 2] for tensor in p])
-                real.append([tensor[tensor.size(0) // 2:] for tensor in p])
+                real.append([tensor[tensor.size(0) // 2 :] for tensor in p])
         else:
             fake = pred[: pred.size(0) // 2]
-            real = pred[pred.size(0) // 2:]
+            real = pred[pred.size(0) // 2 :]
 
         return fake, real
 

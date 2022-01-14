@@ -91,7 +91,9 @@ def get_paths(image_dir):
     images_paths = []
     for root, dnames, fnames in sorted(os.walk(image_dir)):
         for fname in fnames:
-            if is_image_file(fname, extensions=".png") or is_image_file(fname, extensions=".npz"):
+            if is_image_file(fname, extensions=".png") or is_image_file(
+                fname, extensions=".npz"
+            ):
                 images_paths.append(os.path.join(root, fname))
     return images_paths
 
