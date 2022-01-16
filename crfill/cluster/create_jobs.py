@@ -11,7 +11,7 @@ variable_params = {
     "batchSize": 64,
     "niter_decay": 500,
     "niter": 1000,
-    "sigma": 0.1,
+    "sigma": 0.01,
     "beta_kl": 1,
     "latent_size": 64,
     "downsample": 2,
@@ -22,7 +22,7 @@ variable_params = {
 
 standard_params = (
     f"python -u {training_script} --dataset_mode_train custom_train_vae --dataset_mode custom_train_vae "
-    f"--train_image_dir /data --preprocess_mode none --validation_freq 50000 "
+    f"--train_image_dir /data/images --preprocess_mode none --validation_freq 50000 "
     f"--display_freq 10000 --model vae"
 )
 
@@ -46,26 +46,29 @@ def create_range(
         return values
 
 
-ranges = {"sigma": ("exponential", -3, 1), "beta_kl": ("exponential", -3, 1)}
+ranges = {"beta_kl": ("exponential", (-3, 1)), "downsample": ("list", [2,4]), "latent_size": ("list", [8,16,32,64])}
 
-num_tasks = 16
+num_tasks = 32
 
 rng = np.random.default_rng(0)
 
 params_combinations = {"task_id": list(range(num_tasks))}
 
-for param, (range_type, min, max) in ranges.items():
+for param, (range_type, range_data) in ranges.items():
     params_combinations[param] = []
     for i in range(num_tasks):
         if range_type == "exponential":
-            exponent = rng.uniform(min, max)
+            exponent = rng.uniform(range_data[0], range_data[1])
             params_combinations[param].append(10 ** exponent)
+        if range_type == "list":
+            value = rng.choice(range_data)
+            params_combinations[param].append(value)
 
 gpus_per_node = 4
 
 lines = None
 
-experiment_name = "vae_sigma_beta_param_search"
+experiment_name = "vae_64_sigma_down_latent"
 from pathlib import Path
 
 Path(experiment_name).mkdir(exist_ok=True)
@@ -87,19 +90,19 @@ for i in range(num_tasks):
         else:
             cur = variable_params[param]
 
-        current_params += f" --{param} {cur}"
+        current_params += f" --{param} {cur}\\\n"
     current_params += f" --name {experiment_name}_{i}"
     current_params += f" --checkpoints_dir $HOME/challenging-nodes/crfill/checkpoints/{experiment_name}_{i}"
     current_params += f" --gpu_ids {i%gpus_per_node}"
     lines.append("\n")
 
     singularity_command = (
-        f"singularity exec --no-home --nv "
-        f"--bind {data}:/data "
-        f"--bind {jobs_source} "
-        f"--bind $HOME/challenging-nodes/crfill/checkpoints "
-        f"--pwd {jobs_source} "
-        f"{singularity_image} "
+        f"singularity exec --no-home --nv \\\n"
+        f"--bind {data}:/data  \\\n"
+        f"--bind {jobs_source}  \\\n"
+        f"--bind $HOME/challenging-nodes/crfill/checkpoints  \\\n"
+        f"--pwd {jobs_source}  \\\n"
+        f"{singularity_image}  \\\n"
         f"{current_params}"
     )
     lines.append(singularity_command)
