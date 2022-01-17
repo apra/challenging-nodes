@@ -20,7 +20,7 @@ RUN pip install torch==1.10.1+cu113 torchvision==0.11.2+cu113 -f https://downloa
 COPY --chown=algorithm:algorithm requirements.txt /opt/algorithm/
 #COPY --chown=algorithm:algorithm entrypoint.sh /opt/algorithm/
 COPY --chown=algorithm:algorithm model_submission /opt/algorithm/model_submission
-#COPY --chown=algorithm:algorithm /input /input
+COPY --chown=algorithm:algorithm /input /input
 # Install required python packages via pip - please see the requirements.txt and adapt it to your needs
 RUN python -m pip install --user -rrequirements.txt
 

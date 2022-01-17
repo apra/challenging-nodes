@@ -93,7 +93,8 @@ def crop_around_mask_bbox(image: np.ndarray, mask_bbox, crop_size=256, rng=None,
     im_max_x, im_max_y = image.shape
     mask_x, mask_y, mask_w, mask_h = mask_bbox
     if rng is None:
-        rng = np.random.default_rng(seed=0)
+        #rng = np.random.default_rng(seed=0)
+        rng = np.random.default_rng()
 
     crop_min_x = max(mask_x + mask_w - crop_size, 0)
     crop_max_x = min(mask_x, im_max_x - crop_size)
@@ -121,3 +122,23 @@ def crop_around_mask_bbox(image: np.ndarray, mask_bbox, crop_size=256, rng=None,
         return cropped_image, new_mask, [crop_x, crop_y, crop_size, crop_size]
     else:
         return cropped_image
+
+
+def intersection_over_union(boxA, boxB):
+    # determine the (x, y)-coordinates of the intersection rectangle
+    xA = max(boxA[0], boxB[0])
+    yA = max(boxA[1], boxB[1])
+    xB = min(boxA[2], boxB[2])
+    yB = min(boxA[3], boxB[3])
+    # compute the area of intersection rectangle
+    interArea = max(0, xB - xA) * max(0, yB - yA)
+    # compute the area of both the prediction and ground-truth
+    # rectangles
+    boxAArea = (boxA[2] - boxA[0]) * (boxA[3] - boxA[1])
+    boxBArea = (boxB[2] - boxB[0]) * (boxB[3] - boxB[1])
+    # compute the intersection over union by taking the intersection
+    # area and dividing it by the sum of prediction + ground-truth
+    # areas - the interesection area
+    iou = interArea / float(boxAArea + boxBArea - interArea)
+    # return the intersection over union value
+    return iou
