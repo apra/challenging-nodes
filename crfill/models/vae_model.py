@@ -1,4 +1,6 @@
 import math
+
+import torchvision.utils
 from dataclasses import dataclass
 from typing import List, Dict, Optional
 
@@ -8,7 +10,12 @@ from torch import nn
 from torch.nn import functional as F
 import util.util as util
 
+from pathlib import Path
 
+import numpy as np
+
+import visualization.vis_utils as visualize_util
+from PIL import Image
 class Interpolate(nn.Module):
     """Wrapper for torch.nn.functional.interpolate."""
 
@@ -508,7 +515,7 @@ class vaemodel(nn.Module):
         print(f"load {self.opt.network_path}")
         util.load_network_path(self, self.opt.network_path)
 
-    def sample(self, x=None, samples=2):
+    def sample(self, x=None, samples=2, out_dir:Path=None):
         b_size = samples
         mean = torch.zeros((b_size, self.opt.latent_size)).to("cuda")
         sigma = torch.ones((b_size, self.opt.latent_size)).to("cuda")
@@ -532,9 +539,125 @@ class vaemodel(nn.Module):
         # x_recon = decoder_output
         # x_recon = torch.clamp(decoder_output, 0, 1)
         x_recon = decoder_output.sigmoid()
+        out = torch.zeros(x_recon.shape,dtype=torch.uint8)
+        for i,output in enumerate(x_recon):
+            output = (output - torch.min(output)) / (torch.max(output) - torch.min(output))
+            output *= 255
+            out[i] = output.to(torch.uint8)
 
+        filename = out_dir/Path("sample.png")
+        filename.parent.mkdir(parents=True, exist_ok=True)
+
+        img = Image.fromarray(torchvision.utils.make_grid(out, nrow=4).permute(1,2,0).cpu().numpy())
+        img.save(filename)
         return x_recon
 
+    def traversal(self, x= None, samples=1, out_dir:Path=None):
+        num_frames = 50
+        fps = 20
+        b_size = samples
+        means = torch.zeros((b_size, self.opt.latent_size)).to("cuda")
+        sigma = torch.ones((b_size, self.opt.latent_size)).to("cuda")
+        logvars = torch.zeros((b_size, self.opt.latent_size)).to("cuda")
+
+        if x is not None:
+            x = x.to("cuda")
+            b_size = x.shape[0]
+            encoder_out = self.forward_vae_slots(x)
+            mean = encoder_out["latent_means"]
+            sigma = encoder_out["latent_sigmas"]
+            logvars = encoder_out['latent_logvars']
+            mean = mean.unsqueeze(0)
+            sigma = sigma.unsqueeze(0)
+            means = mean.repeat(samples, 1, 1).view(b_size * samples, -1)
+            sigma = sigma.repeat(samples, 1, 1).view(b_size * samples, -1)
+
+        means = means.cpu().numpy()
+        logvars = logvars.cpu().numpy()
+
+        for i, base_code in enumerate(means):
+            images = []
+            for j in range(base_code.shape[0]):
+                code = np.repeat(np.expand_dims(base_code, 0), num_frames, axis=0)
+                code[:, j] = visualize_util.cycle_gaussian(base_code[j], num_frames)
+                code = torch.Tensor(code).to("cuda")
+                output = self.decoder(code).cpu().numpy()
+                output = (output-np.min(output))/(np.max(output)-np.min(output))
+                output *= 255
+                output = output.astype(np.uint8)
+                images.append(output)
+            filename = out_dir /Path("std_gaussian_cycle/std_gaussian_cycle%d.gif" % i)
+            filename.parent.mkdir(parents=True, exist_ok=True)
+            visualize_util.save_animation(np.transpose(np.array(images), (0,1,3,4,2)), filename, fps)
+            # Cycle through quantiles of a fitted Gaussian.
+        for i, base_code in enumerate(means):
+            images = []
+            for j in range(base_code.shape[0]):
+                code = np.repeat(np.expand_dims(base_code, 0), num_frames, axis=0)
+                loc = np.mean(means[:, j])
+                total_variance = np.mean(np.exp(logvars[:, j])) + np.var(means[:, j])
+                code[:, j] = visualize_util.cycle_gaussian(
+                    base_code[j], num_frames, loc=loc, scale=10*np.sqrt(total_variance))
+                output = self.decoder(torch.Tensor(code).to("cuda")).cpu().numpy()
+                output = (output - np.min(output)) / (np.max(output) - np.min(output))
+                output *= 255
+                output = output.astype(np.uint8)
+                images.append(output)
+            filename = out_dir /Path("fitted_gaussian/fitted_gaussian_cycle%d.gif" % i)
+            filename.parent.mkdir(parents=True, exist_ok=True)
+            visualize_util.save_animation(np.transpose(np.array(images), (0,1,3,4,2)), filename, fps)
+
+            # Cycle through [-2, 2] interval.
+        for i, base_code in enumerate(means):
+            images = []
+            for j in range(base_code.shape[0]):
+                code = np.repeat(np.expand_dims(base_code, 0), num_frames, axis=0)
+                code[:, j] = visualize_util.cycle_interval(base_code[j], num_frames,
+                                                           -2., 2.)
+                output = self.decoder(torch.Tensor(code).to("cuda")).cpu().numpy()
+                output = (output - np.min(output)) / (np.max(output) - np.min(output))
+                output *= 255
+                output = output.astype(np.uint8)
+                images.append(output)
+            filename = out_dir /Path("fixed_interval_cycle/fixed_interval_cycle%d.gif" % i)
+            filename.parent.mkdir(parents=True, exist_ok=True)
+            visualize_util.save_animation(np.transpose(np.array(images), (0,1,3,4,2)), filename, fps)
+
+            # Cycle linearly through +-2 std dev of a fitted Gaussian.
+        for i, base_code in enumerate(means):
+            images = []
+            for j in range(base_code.shape[0]):
+                code = np.repeat(np.expand_dims(base_code, 0), num_frames, axis=0)
+                loc = np.mean(means[:, j])
+                total_variance = np.mean(np.exp(logvars[:, j])) + np.var(means[:, j])
+                scale = np.sqrt(total_variance)
+                code[:, j] = visualize_util.cycle_interval(base_code[j], num_frames,
+                                                           loc - 2. * scale, loc + 2. * scale)
+                output = self.decoder(torch.Tensor(code).to("cuda")).cpu().numpy()
+                output = (output - np.min(output)) / (np.max(output) - np.min(output))
+                output *= 255
+                output = output.astype(np.uint8)
+                images.append(output)
+            filename = out_dir / Path("conf_interval_cycle/conf_interval_cycle%d.gif" % i)
+            filename.parent.mkdir(parents=True, exist_ok=True)
+            visualize_util.save_animation(np.transpose(np.array(images), (0,1,3,4,2)), filename, fps)
+
+            # Cycle linearly through minmax of a fitted Gaussian.
+        for i, base_code in enumerate(means):
+            images = []
+            for j in range(base_code.shape[0]):
+                code = np.repeat(np.expand_dims(base_code, 0), num_frames, axis=0)
+                code[:, j] = visualize_util.cycle_interval(base_code[j], num_frames,
+                                                           np.min(means[:, j]),
+                                                           np.max(means[:, j]))
+                output = self.decoder(torch.Tensor(code).to("cuda")).cpu().numpy()
+                output = (output - np.min(output)) / (np.max(output) - np.min(output))
+                output *= 255
+                output = output.astype(np.uint8)
+                images.append(output)
+            filename = out_dir / Path("minmax_interval_cycle/minmax_interval_cycle%d.gif" % i)
+            filename.parent.mkdir(parents=True, exist_ok=True)
+            visualize_util.save_animation(np.transpose(np.array(images), (0,1,3,4,2)), filename, fps)
     def forward(self, x):
         forward_out = self.forward_vae_slots(x)
 

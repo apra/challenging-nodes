@@ -232,13 +232,13 @@ class BaseOptions:
         new_opt = pickle.load(open(filepath, "rb"))
         return new_opt
 
-    def parse(self, save=False):
+    def parse(self, save=True):
 
         opt = self.gather_options()
         opt.isTrain = self.isTrain  # train or test
 
         self.print_options(opt)
-        if opt.isTrain:
+        if opt.isTrain and save:
             self.save_options(opt)
 
         # set gpu ids

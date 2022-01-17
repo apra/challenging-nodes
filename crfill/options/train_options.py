@@ -5,7 +5,6 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 
 from .base_options import BaseOptions
 
-
 class TrainOptions(BaseOptions):
     def initialize(self, parser):
         BaseOptions.initialize(self, parser)
@@ -166,3 +165,13 @@ class TrainOptions(BaseOptions):
         parser.add_argument("--freeze_D", action="store_true", help="do not update D")
         self.isTrain = True
         return parser
+
+class SampleOption(TrainOptions):
+    def initialize(self, parser):
+        TrainOptions.initialize(self, parser)
+        self.isTrain = False
+        self.isSampling = True
+
+        return parser
+
+

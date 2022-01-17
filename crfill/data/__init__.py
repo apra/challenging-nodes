@@ -57,7 +57,6 @@ def create_dataloader(opt):
 
 
 def create_dataloader_trainval(opt):
-    assert opt.isTrain
     # get the path to images and the nodules locations, these are already shuffled
     if opt.model == 'arrange':
         paths_and_nodules = get_paths_and_nodules(opt.train_image_dir, opt.include_chexpert,
@@ -66,7 +65,11 @@ def create_dataloader_trainval(opt):
         paths_positive = get_paths_and_nodules(opt.train_image_dir, opt.include_chexpert,
                                               opt.include_mimic, opt.node21_resample_count)
         paths_negative = get_paths_negatives(opt.train_image_dir)
-        paths_and_nodules = [paths_positive, paths_negative]
+        paths_lesions = get_paths(opt.train_lesion_dir)
+        metadata_file = Path(opt.train_lesion_dir).parent / Path('metadata.pkl')
+        with open(metadata_file, "rb") as f:
+            metadata = pickle.load(f)
+        paths_and_nodules = [paths_positive, paths_negative, paths_lesions]
     elif opt.model == 'vae':
         paths_and_nodules = get_paths(opt.train_image_dir)
         metadata_file = Path(opt.train_image_dir).parent / Path('metadata.pkl')
@@ -78,7 +81,7 @@ def create_dataloader_trainval(opt):
     dataset = find_dataset_using_name(opt.dataset_mode_train)
     instance = dataset()
     print(dataset)
-    if opt.model == 'vae':
+    if opt.model == 'vae' or opt.model == 'arrangeplacelesion':
         instance.initialize(opt,paths_and_nodules, 'train', metadata)
     else:
         instance.initialize(opt, paths_and_nodules, 'train')
@@ -94,7 +97,7 @@ def create_dataloader_trainval(opt):
     )
     dataset = find_dataset_using_name(opt.dataset_mode_train)
     instance = dataset()
-    if opt.model == 'vae':
+    if opt.model == 'vae' or opt.model == 'arrangeplacelesion':
         instance.initialize(opt, paths_and_nodules, 'valid', metadata)
     else:
         instance.initialize(opt, paths_and_nodules, 'valid')

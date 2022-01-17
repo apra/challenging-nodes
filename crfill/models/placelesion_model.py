@@ -19,8 +19,8 @@ BaselineVAEOpts = {
         "optimizer_config": {"alg": "Adam", "lr": 0.0005},
     },
     "model": {
-        "height": 32,
-        "width": 32,
+        "height": 64,
+        "width": 64,
         "num_slots": 1,
         "sigma": 0.06,
         "beta_kl": 1,
