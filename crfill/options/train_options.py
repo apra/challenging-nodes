@@ -5,6 +5,7 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 
 from .base_options import BaseOptions
 
+
 class TrainOptions(BaseOptions):
     def initialize(self, parser):
         BaseOptions.initialize(self, parser)
@@ -166,6 +167,7 @@ class TrainOptions(BaseOptions):
         self.isTrain = True
         return parser
 
+
 class SampleOption(TrainOptions):
     def initialize(self, parser):
         TrainOptions.initialize(self, parser)
@@ -173,5 +175,3 @@ class SampleOption(TrainOptions):
         self.isSampling = True
 
         return parser
-
-

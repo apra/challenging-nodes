@@ -6,6 +6,7 @@ import pdb
 from models.networks.sync_batchnorm import DataParallelWithCallback
 import models
 import models.arrange_model
+from models import placelesion_model, arrangeplacelesion_model
 
 
 class Pix2PixPlaceLesionTrainer:
@@ -15,9 +16,9 @@ class Pix2PixPlaceLesionTrainer:
     and the latest visuals to visualize the progress in training.
     """
 
-    def __init__(self, opt):
+    def __init__(self, opt, dataset):
         self.opt = opt
-        self.model = models.create_model(opt)
+        self.model = arrangeplacelesion_model.ArrangeplacelesionModel(opt, dataset)
         # self.model = models.arrange_model.ArrangeModel(opt=opt)
         if len(opt.gpu_ids) > 0:
             self.model = DataParallelWithCallback(self.model, device_ids=opt.gpu_ids)

@@ -42,8 +42,8 @@ class ArrangeplacelesionModel(placelesionmodel):
         parser.add_argument("--beta_kl", type=float, default=1, help="KL divergence")
         return parser
 
-    def __init__(self, opt):
-        super().__init__(opt)
+    def __init__(self, opt, dataset):
+        super().__init__(opt, dataset)
 
     def save(self, epoch):
         # util.save_network(self.netG, "G", epoch, self.opt)

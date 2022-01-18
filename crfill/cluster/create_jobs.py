@@ -46,7 +46,11 @@ def create_range(
         return values
 
 
-ranges = {"beta_kl": ("exponential", (-3, 1)), "downsample": ("list", [2,4]), "latent_size": ("list", [8,16,32,64])}
+ranges = {
+    "beta_kl": ("exponential", (-3, 1)),
+    "downsample": ("list", [2, 4]),
+    "latent_size": ("list", [8, 16, 32, 64]),
+}
 
 num_tasks = 32
 

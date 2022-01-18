@@ -8,6 +8,8 @@ from models.create_mask import MaskCreator
 import random
 import numpy as np
 from models.vae_model import vaemodel
+from util.place_lesion_utils import contrast_matching, poisson_blend, poisson_edit, convert_to_range_0_1, get_nodule_diameter, get_nodule_bbox
+import torchvision
 
 BaselineVAEOpts = {
     "batch_size": 64,
@@ -110,9 +112,10 @@ class placelesionmodel(torch.nn.Module):
         parser.add_argument("--discriminator_weight", type=float, default=1)
         return parser
 
-    def __init__(self, opt):
+    def __init__(self, opt, dataset):
         super().__init__()
         self.opt = opt
+        self.dataset = dataset
 
         self.FloatTensor = (
             torch.cuda.FloatTensor if self.use_gpu() else torch.FloatTensor
@@ -170,7 +173,7 @@ class placelesionmodel(torch.nn.Module):
             raise ValueError("|mode| is invalid")
 
     def create_optimizers(self, opt):
-        G_params = self.netG.get_param_list(opt.update_part) + [
+        G_params = list(self.netG.parameters()) + [
             p for name, p in self.place_lesion.named_parameters()
         ]
         # G_params = [p for name, p in self.netG.named_parameters() \
@@ -233,7 +236,7 @@ class placelesionmodel(torch.nn.Module):
 
     def preprocess_input(self, data):
         if (
-            self.use_gpu()
+                self.use_gpu()
         ):  # this command is irrelevant, all data will already be at the GPU due to DataParallel in pix2pixtrainer
             data["neg_cropped_normalized_cxr"] = data[
                 "neg_cropped_normalized_cxr"
@@ -253,14 +256,14 @@ class placelesionmodel(torch.nn.Module):
         )
 
     def g_image_loss(
-        self,
-        coarse_image,
-        negative,
-        composed_image,
-        positive,
-        mask,
-        composed_full_image,
-        full_image_bbox,
+            self,
+            coarse_image,
+            negative,
+            composed_image,
+            positive,
+            mask,
+            composed_full_image,
+            full_image_bbox,
     ):
         G_losses = {}
 
@@ -275,43 +278,89 @@ class placelesionmodel(torch.nn.Module):
             pred_fake, pred_real = self.discriminate(composed_image, positive, mask)
 
             G_losses["GAN"] = (
-                self.criterionGAN(pred_fake, True, for_discriminator=False)
-                * self.opt.generator_weight
+                    self.criterionGAN(pred_fake, True, for_discriminator=False)
+                    * self.opt.generator_weight
             )
 
         if self.opt.vgg_loss and not self.opt.no_fine_loss:
             G_losses["VGG"] = (
-                self.criterionVGG(negative, positive) * self.opt.lambda_vgg
+                    self.criterionVGG(negative, positive) * self.opt.lambda_vgg
             )
         if not self.opt.no_l1_loss:
             if coarse_image is not None:
                 G_losses["L1_coarse"] = (
-                    torch.nn.functional.l1_loss(coarse_image, negative)
-                    * self.opt.beta_l1
+                        torch.nn.functional.l1_loss(coarse_image, negative)
+                        * self.opt.beta_l1
                 )
             if not self.opt.no_fine_loss:
                 G_losses["L1_fine"] = (
-                    torch.nn.functional.l1_loss(composed_image, negative)
-                    * self.opt.beta_l1
+                        torch.nn.functional.l1_loss(composed_image, negative)
+                        * self.opt.beta_l1
                 )
         return G_losses
 
+    # def place_addition_on_cxr(self, addition, starting_cxr, lesion_bbox):
+    #     max_attenuation = 0.25
+    #     final_addition = addition.clone()
+    #     new_addition = torch.empty_like(addition)
+    #     threshold = 1 / 4096
+    #     starting_cxr = (starting_cxr + 1) / 2
+    #     starting_cxr[starting_cxr < threshold] = threshold
+    #     final_addition[final_addition < threshold] = threshold
+    #     addition = final_addition
+    #     for i, (star, add) in enumerate(zip(starting_cxr, addition)):
+    #         new_addition[i] = max_attenuation * add / add.max() + 1 - max_attenuation
+    #
+    #     addition = new_addition
+    #     if (
+    #         addition.shape[2] < starting_cxr.shape[2]
+    #         or addition.shape[3] < starting_cxr.shape[3]
+    #     ):
+    #
+    #         final_addition = torch.zeros_like(starting_cxr)
+    #         for sample in range(final_addition.shape[0]):
+    #             x = lesion_bbox[sample][0].item()
+    #             y = lesion_bbox[sample][1].item()
+    #             w = lesion_bbox[sample][2].item()
+    #             h = lesion_bbox[sample][3].item()
+    #             width = addition[sample].shape[1]
+    #             height = addition[sample].shape[2]
+    #
+    #             if width > w - 1:
+    #                 delta = width - w
+    #                 rnd_x = int(max(x - delta, 0))
+    #             else:
+    #                 max_x = max(x + 1, x + w - width)
+    #                 rnd_x = np.random.randint(x, max_x)
+    #             if height > h - 1:
+    #                 delta = height - h
+    #                 rnd_y = int(max(y - delta, 0))
+    #             else:
+    #                 max_y = max(y + 1, y + h - height)
+    #                 rnd_y = np.random.randint(y, max_y)
+    #
+    #             final_addition[sample] = addition[sample].min()
+    #             final_addition[
+    #                 sample, :, rnd_x : rnd_x + width, rnd_y : rnd_y + height
+    #             ] = addition[sample]
+    #     addition = final_addition
+    #     return self.place_lesion(((starting_cxr * addition) - 0.5) / 0.5)
     def place_addition_on_cxr(self, addition, starting_cxr, lesion_bbox):
         max_attenuation = 0.25
         final_addition = addition.clone()
-        new_addition = torch.empty_like(addition)
-        threshold = 1 / 4096
+        #threshold = 1 / 4096
         starting_cxr = (starting_cxr + 1) / 2
-        starting_cxr[starting_cxr < threshold] = threshold
-        final_addition[final_addition < threshold] = threshold
-        addition = final_addition
-        for i, (star, add) in enumerate(zip(starting_cxr, addition)):
-            new_addition[i] = max_attenuation * add / add.max() + 1 - max_attenuation
+        #starting_cxr[starting_cxr < threshold] = threshold
+        #final_addition[final_addition < threshold] = threshold
+        addition = convert_to_range_0_1(final_addition)
+        addition = final_addition*(self.dataset.metadata['max']-self.dataset.metadata['min'])+self.dataset.metadata['min']
 
-        addition = new_addition
+        # for lesion in addition:
+        #     lesion = (torchvision.transforms.GaussianBlur(9, sigma=10)(lesion).permute(1, 2, 0).cpu())
+        #     diameter, min_row, min_col, max_row, max_col = get_nodule_bbox((lesion>1.05).squeeze().to(int).cpu().numpy())
         if (
-            addition.shape[2] < starting_cxr.shape[2]
-            or addition.shape[3] < starting_cxr.shape[3]
+                addition.shape[2] < starting_cxr.shape[2]
+                or addition.shape[3] < starting_cxr.shape[3]
         ):
 
             final_addition = torch.zeros_like(starting_cxr)
@@ -338,13 +387,24 @@ class placelesionmodel(torch.nn.Module):
 
                 final_addition[sample] = addition[sample].min()
                 final_addition[
-                    sample, :, rnd_x : rnd_x + width, rnd_y : rnd_y + height
+                sample, :, rnd_x: rnd_x + width, rnd_y: rnd_y + height
                 ] = addition[sample]
         addition = final_addition
-        return self.place_lesion(((starting_cxr * addition) - 0.5) / 0.5)
+        mask_lesion = ((torchvision.transforms.GaussianBlur(9, sigma=10)(addition)) > 1.03).to(int)
+        nodule_pixels = mask_lesion>0
+#        c = contrast_matching(addition, starting_cxr, nodule_pixels)
+#        nodule_contrasted = addition * c
+        results = torch.zeros_like(starting_cxr)
+        for sample in range(final_addition.shape[0]):
+            results[sample] = torch.Tensor(poisson_edit(addition[sample].permute(1, 2, 0).detach().cpu().numpy(),
+                                           starting_cxr[sample].permute(1, 2, 0).detach().cpu().numpy(),
+                                           mask_lesion[sample].permute(1, 2, 0).detach().cpu().numpy(), (0, 0))).permute(2,0,1)
+
+        return 2*(results -0.5)
+#        return self.place_lesion(((starting_cxr * addition) - 0.5) / 0.5)
 
     def compute_generator_loss(
-        self, negative, positive, mask, crop_bbox, lesion_bbox, cxr, cropped_lesion_bbox
+            self, negative, positive, mask, crop_bbox, lesion_bbox, cxr, cropped_lesion_bbox
     ):
         return NotImplementedError
 
@@ -402,10 +462,10 @@ class placelesionmodel(torch.nn.Module):
             real = []
             for p in pred:
                 fake.append([tensor[: tensor.size(0) // 2] for tensor in p])
-                real.append([tensor[tensor.size(0) // 2 :] for tensor in p])
+                real.append([tensor[tensor.size(0) // 2:] for tensor in p])
         else:
             fake = pred[: pred.size(0) // 2]
-            real = pred[pred.size(0) // 2 :]
+            real = pred[pred.size(0) // 2:]
 
         return fake, real
 

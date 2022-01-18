@@ -45,11 +45,11 @@ output_dir.mkdir(parents=True, exist_ok=True)
 with torch.no_grad():
     model.eval()
     for i, data in enumerate(dataloader_train):
-        model.sample(data["inputs"], out_dir=output_dir/Path("from_input_sample"))
-        model.traversal(out_dir=output_dir, x=data['inputs'])
+        model.sample(data["inputs"], out_dir=output_dir / Path("from_input_sample"))
+        model.traversal(out_dir=output_dir, x=data["inputs"])
         # ts_writer.add_image("sampling/results", make_grid((result), nrow=4), i)
         # ts_writer.add_image("sampling/inputs", make_grid((data["inputs"])), i)
 
-        model.sample(out_dir=output_dir/Path("random_sample"), samples=8)
+        model.sample(out_dir=output_dir / Path("random_sample"), samples=8)
         break
-        #ts_writer.add_image("sampling/random", make_grid(result, nrow=4), i)
+        # ts_writer.add_image("sampling/random", make_grid(result, nrow=4), i)
