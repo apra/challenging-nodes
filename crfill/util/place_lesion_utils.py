@@ -91,8 +91,10 @@ def convert_to_range_0_1(image_data):
         image_data: the image to normalize
     returns the normalized image
     """
-    image_max = torch.max(image_data.view(image_data.shape[0], image_data.shape[1]* image_data.shape[2]* image_data.shape[3]), dim=0)
-    image_min = torch.min(image_data.view(image_data.shape[0], image_data.shape[1]* image_data.shape[2]* image_data.shape[3]), dim=0)
+    image_max,_ = torch.max(image_data.view(image_data.shape[0], image_data.shape[1]* image_data.shape[2]* image_data.shape[3]), dim=1)
+    image_min,_ = torch.min(image_data.view(image_data.shape[0], image_data.shape[1]* image_data.shape[2]* image_data.shape[3]), dim=1)
+    image_min = image_min.unsqueeze(1).unsqueeze(2).unsqueeze(3)
+    image_max = image_max.unsqueeze(1).unsqueeze(2).unsqueeze(3)
     try:
         return (image_data - image_min) / (image_max - image_min)
     except:
@@ -266,9 +268,10 @@ def poisson_blend(nodule, lung_photo, x0, x1, y0, y1):
         mixed_clone2 = cv2.seamlessClone(obj2, im2, mask2, center, cv2.MIXED_CLONE)
         return cv2.cvtColor(mixed_clone2, cv2.COLOR_BGR2GRAY)
 
-    except:
+    except Exception as e:
+        print(e)
         print('there is a problem with cv2 poisson blending op')
-        return np.array(lung_photo)
+        return np.array(lung_photo).squeeze()
 
 
 def process_CT_patches(ct_path, seg_path, required_diameter):

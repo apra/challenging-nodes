@@ -10,6 +10,7 @@ import numpy as np
 from models.vae_model import vaemodel
 from util.place_lesion_utils import contrast_matching, poisson_blend, poisson_edit, convert_to_range_0_1, get_nodule_diameter, get_nodule_bbox
 import torchvision
+import cv2
 
 BaselineVAEOpts = {
     "batch_size": 64,
@@ -346,18 +347,25 @@ class placelesionmodel(torch.nn.Module):
     #     addition = final_addition
     #     return self.place_lesion(((starting_cxr * addition) - 0.5) / 0.5)
     def place_addition_on_cxr(self, addition, starting_cxr, lesion_bbox):
-        max_attenuation = 0.25
-        final_addition = addition.clone()
-        #threshold = 1 / 4096
-        starting_cxr = (starting_cxr + 1) / 2
-        #starting_cxr[starting_cxr < threshold] = threshold
-        #final_addition[final_addition < threshold] = threshold
-        addition = convert_to_range_0_1(final_addition)
-        addition = final_addition*(self.dataset.metadata['max']-self.dataset.metadata['min'])+self.dataset.metadata['min']
+        lesion = self.netG.sample(samples=starting_cxr.shape[0])
 
-        # for lesion in addition:
-        #     lesion = (torchvision.transforms.GaussianBlur(9, sigma=10)(lesion).permute(1, 2, 0).cpu())
-        #     diameter, min_row, min_col, max_row, max_col = get_nodule_bbox((lesion>1.05).squeeze().to(int).cpu().numpy())
+        starting_cxr = (starting_cxr + 1) / 2
+        addition = convert_to_range_0_1(lesion)
+
+        new = addition * 255
+        new = new.squeeze().detach().cpu().numpy().astype('uint8')
+        mask_lesions = torch.zeros_like(addition)
+        generated_bbox = []
+        for sample in range(mask_lesions.shape[0]):
+            result = cv2.GaussianBlur(new[sample],(11,11),10)
+            result = cv2.threshold(result, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+            result = 255 - result
+            non_zero = np.argwhere(result)
+            top_left = non_zero.min(axis=0)
+            bottom_right = non_zero.max(axis=0)
+            generated_bbox.append((top_left[0], top_left[1], bottom_right[0], bottom_right[1]))
+            result = addition[sample][:,top_left[0]:bottom_right[0] + 1, top_left[1]:bottom_right[1] + 1].permute(1,2,0).detach().cpu().numpy()
+
         if (
                 addition.shape[2] < starting_cxr.shape[2]
                 or addition.shape[3] < starting_cxr.shape[3]
@@ -389,16 +397,26 @@ class placelesionmodel(torch.nn.Module):
                 final_addition[
                 sample, :, rnd_x: rnd_x + width, rnd_y: rnd_y + height
                 ] = addition[sample]
-        addition = final_addition
-        mask_lesion = ((torchvision.transforms.GaussianBlur(9, sigma=10)(addition)) > 1.03).to(int)
-        nodule_pixels = mask_lesion>0
+
+        addition = 0.4*addition
+        nodule_pixels = mask_lesions>0
+
 #        c = contrast_matching(addition, starting_cxr, nodule_pixels)
 #        nodule_contrasted = addition * c
         results = torch.zeros_like(starting_cxr)
-        for sample in range(final_addition.shape[0]):
-            results[sample] = torch.Tensor(poisson_edit(addition[sample].permute(1, 2, 0).detach().cpu().numpy(),
-                                           starting_cxr[sample].permute(1, 2, 0).detach().cpu().numpy(),
-                                           mask_lesion[sample].permute(1, 2, 0).detach().cpu().numpy(), (0, 0))).permute(2,0,1)
+        for sample in range(results.shape[0]):
+            min_row = lesion_bbox[sample][0].item()
+            min_col = lesion_bbox[sample][1].item()
+            rows = lesion_bbox[sample][2].item()
+            cols = lesion_bbox[sample][3].item()
+            max_row = min_row+rows
+            max_col = min_col+cols
+            input_0 = addition[sample].permute(1,2,0).detach().cpu().numpy()
+            input_1 = starting_cxr[sample].permute(1,2,0).detach().cpu().numpy()
+            results[sample] = (1/255)*torch.Tensor(poisson_blend(input_0,input_1 , min_col, max_col, min_row, max_row)).unsqueeze(0)
+            # results[sample] = torch.Tensor(poisson_edit(addition[sample].permute(1, 2, 0).detach().cpu().numpy(),
+            #                                starting_cxr[sample].permute(1, 2, 0).detach().cpu().numpy(),
+            #                                mask_lesion[sample].permute(1, 2, 0).detach().cpu().numpy(), (0, 0))).permute(2,0,1)
 
         return 2*(results -0.5)
 #        return self.place_lesion(((starting_cxr * addition) - 0.5) / 0.5)
