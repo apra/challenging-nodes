@@ -1,105 +1,50 @@
-# crfill
-
-[Usage](#basic-usage) | [Web App](#web-app) | | [Paper](https://arxiv.org/pdf/2011.12836.pdf) | [Supplementary Material](https://maildluteducn-my.sharepoint.com/:b:/g/personal/zengyu_mail_dlut_edu_cn/Eda8Q_v7OSNMj0nr2iG7TmABvxLOtAPwVDdk5mjl7c-IFw?e=Cvki0I) | [More results](viscmp.md) |
-
-code for paper ``CR-Fill: Generative Image Inpainting with Auxiliary Contextual Reconstruction". This repo (including code and models) are for research purposes only. 
-
-<img src="https://s3.ax1x.com/2020/11/27/DrVxIO.png" width="160"> <img src="https://s3.ax1x.com/2020/11/27/DrZ9RH.png" width="160"> 
-<img src="https://s3.ax1x.com/2020/11/27/DrZlyn.png" width="160"> <img src="https://s3.ax1x.com/2020/11/27/DrZGwV.png" width="160"> 
-
-<img src="https://s3.ax1x.com/2020/11/27/DrZtFU.png" width="360"> <img src="https://s3.ax1x.com/2020/11/27/DrZdSJ.png" width="360"> 
-
-## Usage
-
-### Dependencies
-0. Download code
-```
-git clone --single-branch https://github.com/zengxianyu/crfill
-git submodule init
-git submodule update
-```
-
-0. Download data and model
-```
-chmod +x download/*
-./download/download_model.sh
-./download/download_datal.sh
-```
-
-1. Install dependencies:
-```
-conda env create -f environment.yml
-```
-or install these packages manually in a Python 3.6 enviroment: 
-
-```pytorch=1.3.1, opencv=3.4.2, tqdm, torchvision, dill, matplotlib, opencv```
-
-
-### Inference
-
-```
-./test.sh
-```
-
-These script will run the inpainting model on the samples I provided. Modify the options ```--image_dir, --mask_dir, --output_dir``` in ```test.sh``` to test on custom data. 
-
-### Train
-1. Prepare training datasets and put them in ```./datasets/``` following the example ```./datasets/places```
-
-2. run the training script:
-```
-python train.py --dataset_mode_train trainimage --name debug --dataset_mode_val valimage --train_image_dir ./datasets/places/places2 --train_image_list ./datasets/places/train_example.txt --path_objectshape_list ./datasets/object_shapes.txt --path_objectshape_base ./datasets/object_masks --val_image_dir ./datasets/places2sample1k_val/places2samples1k_crop256 --val_image_list ./datasets/places2sample1k_val/files.txt --val_mask_dir ./datasets/places2sample1k_val/places2samples1k_256_mask_square128 --no_vgg_loss --no_ganFeat_loss --load_size 640 --crop_size 256 --model inpaint --netG baseconv --netD deepfill --preprocess_mode scale_shortside_and_crop --validation_freq 10000 --gpu_ids 0 --niter 50
+# Running the lesion placing
+```shell
+python train_lesion.py
+--network_path
+C:\Users\s.papa\docs\code\challenging-nodes\crfill\checkpoints\vae_64\vae_64_sigma_down_latent_16\vae_64_sigma_down_latent_16\latest_net_G.pth
+--dataset_mode_train
+custom_train_place_lesion
+--dataset_mode
+custom_train_place_lesion
+--model
+arrangeplacelesion
+--name
+vae_64_sigma_down_latent_16
+--checkpoints_dir
+C:\Users\s.papa\docs\code\challenging-nodes\crfill\checkpoints\vae_64\vae_64_sigma_down_latent_16
+--train_image_dir
+../../data/data_node21
+--train_lesion_dir
+../../data/dataset_node21/ct_patches/projected/images
+--validation_freq
+1000
+--gpu_ids
+0
+--niter
+50
+--batchSize
+4
+--display_freq
+1
+--load_from_checkpoint
+--num_workers=0
+--netD
+deepfill
+--node21_resample_count
+10
+--include_chexpert
+--include_mimic
+--D_steps_per_G
+100000
+--no_l1_loss
 ```
 
-open the html files in ```./output``` to visualize training
+The `--load_from_checkpoint` is especially essential because without 
+it you risk over-writing the options `.pkl` or the weights of the trained
+VAE. The options `.pkl` is important that it stays the same because 
+it needs it to initialize the VAE model correctly.
 
-After the training is finished, the model files can be found in ```./checkpoints/debugarr0```
+The outputs are basically just seen in the tensorboard that gets added
+in the `/tensorboard/` folder.
 
-you may modify the training script to use different settings, e.g., batch size, hyperparameters
-
-### Finetune
-For finetune on custom dataset based on my pretrained models, use the following command:
-1. download checkpoints
-```
-./download/download_pretrain.sh
-```
-2. run the training script
-```
-./finetune.sh
-```
-you may change the options in ```finetune.sh``` to use different hyperparameters or your own dataset
-
-
-### Web APP
-<img src="https://s3.ax1x.com/2020/11/27/DrVLs1.png" width=300>
-
-To use the web app, these additional packages are required: 
-
-```flask```, ```requests```, ```pillow```
-
-
-```
-./demo.sh
-```
-
-then open http://localhost:2334 in the browser to use the web app
-
-```
-singularity shell --nv --bind $SCRATCH container.sif
-```
-
-## Citing
-```
-@inproceedings{zeng2021generative,
-  title={CR-Fill: Generative Image Inpainting with Auxiliary Contextual Reconstruction},
-  author={Zeng, Yu and Lin, Zhe and Lu, Huchuan and Patel, Vishal M.},
-  booktitle={Proceedings of the IEEE International Conference on Computer Vision},
-  year={2021}
-}
-```
-
-## Acknowledgement
-
-* DeepFill https://github.com/jiahuiyu/generative_inpainting
-* Pix2PixHD https://github.com/NVIDIA/pix2pixHD
-* SPADE https://github.com/NVlabs/SPADE
