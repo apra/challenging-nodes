@@ -48,3 +48,7 @@ it needs it to initialize the VAE model correctly.
 The outputs are basically just seen in the tensorboard that gets added
 in the `/tensorboard/` folder.
 
+Data is available in `/mnt/archive/projectdata/data_node21/projected/`.
+
+The model is available in `/mnt/archive/projectdata/data_node21/trained_vaes/`.
+
