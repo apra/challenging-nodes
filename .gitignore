@@ -21,6 +21,8 @@ eggs/
 lib/
 lib64/
 parts/
+nodule_patches/
+
 sdist/
 var/
 wheels/
@@ -109,3 +111,6 @@ small_test/
 non-necessary/
 data/
 crfill/docker_folder/images
+crfill/run-local.sh
+crfill/run-local.sh
+/output/

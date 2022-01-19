@@ -11,6 +11,12 @@ from models.vae_model import vaemodel
 from util.place_lesion_utils import contrast_matching, poisson_blend, poisson_edit, convert_to_range_0_1, get_nodule_diameter, get_nodule_bbox
 import torchvision
 import cv2
+import matplotlib.pyplot as plt
+import matplotlib
+import scipy.ndimage as ndi
+from util.plot_util import draw_rectangle
+import pandas as pd
+matplotlib.use( 'tkagg' )
 
 BaselineVAEOpts = {
     "batch_size": 64,
@@ -346,9 +352,31 @@ class placelesionmodel(torch.nn.Module):
     #             ] = addition[sample]
     #     addition = final_addition
     #     return self.place_lesion(((starting_cxr * addition) - 0.5) / 0.5)
-    def place_addition_on_cxr(self, lesion, starting_cxr, lesion_bbox):
-        lesion = self.netG.sample(samples=starting_cxr.shape[0], change_dim=13, change_val=.49)
 
+    def upscale_lesion(self, lesion, lesion_bbox):
+        bbox_height = lesion_bbox[3].item()
+        bbox_wid = lesion_bbox[2].item()
+        lesion_height = lesion.shape[0]
+        lesion_width = lesion.shape[1]
+        scale_factor_height = bbox_height / lesion_height
+        scale_factor_width = bbox_wid / lesion_width
+        scale_factor = min(scale_factor_width, scale_factor_height)
+        upscale = ndi.interpolation.zoom(lesion, scale_factor, mode='nearest', order=3)
+        upscale = upscale * 0.4
+        return upscale
+
+    def place_addition_on_cxr(self, lesion, starting_cxr, lesion_bbox):
+        #torch.manual_seed(0)
+
+        db = pd.read_pickle('C:\\Users\\e.marcus\\PycharmProjects\\challenging-nodes\\datasets\\projected\\metadata.pkl')
+        xcoords = np.array(db['dim0'])
+        ycoords = np.array(db['dim1'])
+
+        aspect_ratios = xcoords/ycoords
+        inverse_ratios = ycoords/xcoords
+
+        #lesion = self.netG.sample(samples=starting_cxr.shape[0], change_dim=13, change_val=.98)
+        lesion = self.netG.sample(samples=starting_cxr.shape[0])
         starting_cxr = (starting_cxr + 1) / 2
         addition = convert_to_range_0_1(lesion)
 
@@ -356,70 +384,42 @@ class placelesionmodel(torch.nn.Module):
         new = new.squeeze().detach().cpu().numpy().astype('uint8')
         mask_lesions = torch.zeros_like(addition)
         generated_bbox = []
+        scaled_down_lesions = []
+
         for sample in range(mask_lesions.shape[0]):
-            result = cv2.GaussianBlur(new[sample],(11,11),10)
+            result = cv2.GaussianBlur(new[sample],(11,11),5)
             result = cv2.threshold(result, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
             result = 255 - result
             non_zero = np.argwhere(result)
             top_left = non_zero.min(axis=0)
             bottom_right = non_zero.max(axis=0)
             generated_bbox.append((top_left[0], top_left[1], bottom_right[0], bottom_right[1]))
-            result = addition[sample][:,top_left[0]:bottom_right[0] + 1, top_left[1]:bottom_right[1] + 1].permute(1,2,0).detach().cpu().numpy()
+            result = addition[sample][:,top_left[0]:bottom_right[0] + 1, top_left[1]:bottom_right[1] + 1].detach().cpu().numpy()
+            scaled_down_lesions.append(result.reshape(result.shape[-2:]))
 
-        if (
-                addition.shape[2] < starting_cxr.shape[2]
-                or addition.shape[3] < starting_cxr.shape[3]
-        ):
-
-            final_addition = torch.zeros_like(starting_cxr)
-            for sample in range(final_addition.shape[0]):
-                x = lesion_bbox[sample][0].item()
-                y = lesion_bbox[sample][1].item()
-                w = lesion_bbox[sample][2].item()
-                h = lesion_bbox[sample][3].item()
-                width = addition[sample].shape[1]
-                height = addition[sample].shape[2]
-
-                if width > w - 1:
-                    delta = width - w
-                    rnd_x = int(max(x - delta, 0))
-                else:
-                    max_x = max(x + 1, x + w - width)
-                    rnd_x = np.random.randint(x, max_x)
-                if height > h - 1:
-                    delta = height - h
-                    rnd_y = int(max(y - delta, 0))
-                else:
-                    max_y = max(y + 1, y + h - height)
-                    rnd_y = np.random.randint(y, max_y)
-
-                final_addition[sample] = addition[sample].min()
-                final_addition[
-                sample, :, rnd_x: rnd_x + width, rnd_y: rnd_y + height
-                ] = addition[sample]
-                generated_bbox[sample] = (generated_bbox[sample][0]+rnd_x,generated_bbox[sample][1]+rnd_x, generated_bbox[sample][2]+rnd_y, generated_bbox[sample][3]+rnd_y)
-
-        addition = 0.4*addition
-        nodule_pixels = mask_lesions>0
-
-#        c = contrast_matching(addition, starting_cxr, nodule_pixels)
-#        nodule_contrasted = addition * c
-        results = torch.zeros_like(starting_cxr)
+        results = np.zeros_like(starting_cxr.detach().cpu().numpy())
         for sample in range(results.shape[0]):
-            min_row = lesion_bbox[sample][0].item()
-            min_col = lesion_bbox[sample][1].item()
-            rows = lesion_bbox[sample][2].item()
-            cols = lesion_bbox[sample][3].item()
+            min_row = lesion_bbox[sample][1].item()
+            min_col = lesion_bbox[sample][0].item()
+            rows = lesion_bbox[sample][3].item()
+            cols = lesion_bbox[sample][2].item()
             max_row = min_row+rows
             max_col = min_col+cols
-            input_0 = addition[sample].permute(1,2,0).detach().cpu().numpy()
-            input_1 = starting_cxr[sample].permute(1,2,0).detach().cpu().numpy()
-            results[sample] = (1/255)*torch.Tensor(poisson_blend(input_0,input_1 , min_col, max_col, min_row, max_row, generated_bbox[sample])).unsqueeze(0)
+            upscaled_lesion = self.upscale_lesion(scaled_down_lesions[sample], lesion_bbox[sample])
+            #input_0 = scaled_down_lesions[sample]
+            input_1 = starting_cxr[sample].detach().cpu().numpy().reshape((starting_cxr[sample].shape[-2:]))
+            results[sample] = (1/255)*poisson_blend(upscaled_lesion,input_1, min_col, max_col, min_row, max_row)
             # results[sample] = torch.Tensor(poisson_edit(addition[sample].permute(1, 2, 0).detach().cpu().numpy(),
             #                                starting_cxr[sample].permute(1, 2, 0).detach().cpu().numpy(),
             #                                mask_lesion[sample].permute(1, 2, 0).detach().cpu().numpy(), (0, 0))).permute(2,0,1)
 
-        return 2*(results -0.5)
+        #f, axarr = plt.subplots(1,4)
+
+        # plt.imshow(results[0].reshape(results[0].shape[-2:]))
+        # draw_rectangle(lesion_bbox.cpu().numpy()[0])
+        # plt.show()
+
+        return 2*(torch.Tensor(results).cuda() -0.5)
 #        return self.place_lesion(((starting_cxr * addition) - 0.5) / 0.5)
 
     def compute_generator_loss(

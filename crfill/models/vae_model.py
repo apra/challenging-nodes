@@ -534,7 +534,10 @@ class vaemodel(nn.Module):
             sigma = sigma.repeat(samples, 1, 1).view(b_size * samples, -1)
 
         if change_dim is not None:
-            starting_prob = stats.norm.cdf(mean.detach().cpu().numpy(), loc=0., scale=1.)
+            # torch.manual_seed(0)
+            mean2 = torch.rand_like(mean)
+            starting_prob = stats.norm.cdf(mean2.detach().cpu().numpy(), loc=0., scale=1.)
+            starting_prob[:,change_dim] = 0
             change_array = numpy.zeros_like(starting_prob)
             change_array[:,change_dim] = change_val
             z = torch.Tensor(stats.norm.ppf(starting_prob+change_array, loc=0., scale=1.)).to("cuda")
