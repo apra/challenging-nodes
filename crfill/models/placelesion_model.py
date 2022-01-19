@@ -347,7 +347,7 @@ class placelesionmodel(torch.nn.Module):
     #     addition = final_addition
     #     return self.place_lesion(((starting_cxr * addition) - 0.5) / 0.5)
     def place_addition_on_cxr(self, lesion, starting_cxr, lesion_bbox):
-        lesion = self.netG.sample(samples=starting_cxr.shape[0])
+        lesion = self.netG.sample(samples=starting_cxr.shape[0], change_dim=13, change_val=.49)
 
         starting_cxr = (starting_cxr + 1) / 2
         addition = convert_to_range_0_1(lesion)

@@ -1,5 +1,6 @@
 import math
 
+import numpy
 import torchvision.utils
 from dataclasses import dataclass
 from typing import List, Dict, Optional
@@ -16,7 +17,7 @@ import numpy as np
 
 import visualization.vis_utils as visualize_util
 from PIL import Image
-
+from scipy import stats
 
 class Interpolate(nn.Module):
     """Wrapper for torch.nn.functional.interpolate."""
@@ -517,7 +518,7 @@ class vaemodel(nn.Module):
         print(f"load {self.opt.network_path}")
         util.load_network_path(self, self.opt.network_path)
 
-    def sample(self, x=None, samples=2, out_dir: Path = None):
+    def sample(self, x=None, samples=2, change_dim:int=None, change_val:float=0., out_dir: Path = None):
         b_size = samples
         mean = torch.zeros((b_size, self.opt.latent_size)).to("cuda")
         sigma = torch.ones((b_size, self.opt.latent_size)).to("cuda")
@@ -532,9 +533,15 @@ class vaemodel(nn.Module):
             mean = mean.repeat(samples, 1, 1).view(b_size * samples, -1)
             sigma = sigma.repeat(samples, 1, 1).view(b_size * samples, -1)
 
-        q_dist = dists.Normal(mean, sigma)
+        if change_dim is not None:
+            starting_prob = stats.norm.cdf(mean.detach().cpu().numpy(), loc=0., scale=1.)
+            change_array = numpy.zeros_like(starting_prob)
+            change_array[:,change_dim] = change_val
+            z = torch.Tensor(stats.norm.ppf(starting_prob+change_array, loc=0., scale=1.)).to("cuda")
+        else:
+            q_dist = dists.Normal(mean, sigma)
 
-        z = q_dist.sample()
+            z = q_dist.sample()
 
         # x [Batch size, channels, height, width]
         decoder_output = self.decoder(z)
