@@ -8,7 +8,8 @@ from models.create_mask import MaskCreator
 import random
 import numpy as np
 from models.vae_model import vaemodel
-from util.place_lesion_utils import contrast_matching, poisson_blend, poisson_edit, convert_to_range_0_1, get_nodule_diameter, get_nodule_bbox
+from util.place_lesion_utils import contrast_matching, poisson_blend, poisson_edit, convert_to_range_0_1, \
+    get_nodule_diameter, get_nodule_bbox
 import torchvision
 import cv2
 import matplotlib.pyplot as plt
@@ -16,7 +17,8 @@ import matplotlib
 import scipy.ndimage as ndi
 from util.plot_util import draw_rectangle
 import pandas as pd
-matplotlib.use( 'tkagg' )
+
+matplotlib.use('tkagg')
 
 BaselineVAEOpts = {
     "batch_size": 64,
@@ -365,18 +367,70 @@ class placelesionmodel(torch.nn.Module):
         upscale = upscale * 0.4
         return upscale
 
-    def place_addition_on_cxr(self, lesion, starting_cxr, lesion_bbox):
-        #torch.manual_seed(0)
+    def find_lesion(self, lesion_image):
+        addition = convert_to_range_0_1(lesion_image)
 
-        db = pd.read_pickle('C:\\Users\\e.marcus\\PycharmProjects\\challenging-nodes\\datasets\\projected\\metadata.pkl')
+        new = addition * 255
+        new = new.squeeze().detach().cpu().numpy().astype('uint8')
+        generated_bbox = []
+        scaled_down_lesions = []
+
+        for sample in range(addition.shape[0]):
+            result = cv2.GaussianBlur(new[sample], (11, 11), 5)
+            result = cv2.threshold(result, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+            result = 255 - result
+            non_zero = np.argwhere(result)
+            top_left = non_zero.min(axis=0)
+            bottom_right = non_zero.max(axis=0)
+            generated_bbox.append((top_left[0], top_left[1], bottom_right[0], bottom_right[1]))
+            result = addition[sample][:, top_left[0]:bottom_right[0] + 1,
+                     top_left[1]:bottom_right[1] + 1].detach().cpu().numpy()
+            scaled_down_lesions.append(result.reshape(result.shape[-2:]))
+
+        return generated_bbox, scaled_down_lesions
+
+    def place_addition_on_cxr(self, lesion, starting_cxr, lesion_bbox):
+        # torch.manual_seed(0)
+
+        def find_nearest(array, value):
+            array = np.asarray(array)
+            idx = (np.abs(array - value)).argmin()
+            return idx
+
+        db = self.dataset.metadata
         xcoords = np.array(db['dim0'])
         ycoords = np.array(db['dim1'])
 
-        aspect_ratios = xcoords/ycoords
-        inverse_ratios = ycoords/xcoords
+        aspect_ratios = xcoords / ycoords
+        inverse_ratios = ycoords / xcoords
+        areas = xcoords * ycoords
 
-        #lesion = self.netG.sample(samples=starting_cxr.shape[0], change_dim=13, change_val=.98)
-        lesion = self.netG.sample(samples=starting_cxr.shape[0])
+        ratios = (lesion_bbox[3] / lesion_bbox[2]).detach().cpu().numpy()
+
+        batch_size = starting_cxr.shape[0]
+        for sample in range(batch_size):
+            idx = find_nearest(aspect_ratios, ratios[sample])
+            inverse_idx = find_nearest(inverse_ratios, ratios[sample])
+            inverse = False
+            if areas[idx] > areas[inverse_idx]:
+                sel_idx = idx
+            else:
+                sel_idx = inverse_idx
+                inverse = True
+
+            image_path = self.dataset.lesions_paths[sel_idx]
+            loaded_lesion = torch.Tensor(np.load(image_path)['arr_0']).unsqueeze(0).unsqueeze(0).cuda()
+            lesion = self.netG.sample(x=loaded_lesion, samples=10)
+            bbox, crop_lesion = self.find_lesion(lesion)
+
+            new_a_ratios = bbox
+
+            plt.imshow(loaded_lesion.reshape(loaded_lesion.shape[-2:]))
+            # draw_rectangle(lesion_bbox.cpu().numpy()[0])
+            plt.show()
+
+            # lesion = self.netG.sample(samples=starting_cxr.shape[0], change_dim=13, change_val=.98)
+
         starting_cxr = (starting_cxr + 1) / 2
         addition = convert_to_range_0_1(lesion)
 
@@ -387,14 +441,15 @@ class placelesionmodel(torch.nn.Module):
         scaled_down_lesions = []
 
         for sample in range(mask_lesions.shape[0]):
-            result = cv2.GaussianBlur(new[sample],(11,11),5)
+            result = cv2.GaussianBlur(new[sample], (11, 11), 5)
             result = cv2.threshold(result, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
             result = 255 - result
             non_zero = np.argwhere(result)
             top_left = non_zero.min(axis=0)
             bottom_right = non_zero.max(axis=0)
             generated_bbox.append((top_left[0], top_left[1], bottom_right[0], bottom_right[1]))
-            result = addition[sample][:,top_left[0]:bottom_right[0] + 1, top_left[1]:bottom_right[1] + 1].detach().cpu().numpy()
+            result = addition[sample][:, top_left[0]:bottom_right[0] + 1,
+                     top_left[1]:bottom_right[1] + 1].detach().cpu().numpy()
             scaled_down_lesions.append(result.reshape(result.shape[-2:]))
 
         results = np.zeros_like(starting_cxr.detach().cpu().numpy())
@@ -403,24 +458,25 @@ class placelesionmodel(torch.nn.Module):
             min_col = lesion_bbox[sample][0].item()
             rows = lesion_bbox[sample][3].item()
             cols = lesion_bbox[sample][2].item()
-            max_row = min_row+rows
-            max_col = min_col+cols
+            max_row = min_row + rows
+            max_col = min_col + cols
             upscaled_lesion = self.upscale_lesion(scaled_down_lesions[sample], lesion_bbox[sample])
-            #input_0 = scaled_down_lesions[sample]
+            # input_0 = scaled_down_lesions[sample]
             input_1 = starting_cxr[sample].detach().cpu().numpy().reshape((starting_cxr[sample].shape[-2:]))
-            results[sample] = (1/255)*poisson_blend(upscaled_lesion,input_1, min_col, max_col, min_row, max_row)
+            results[sample] = (1 / 255) * poisson_blend(upscaled_lesion, input_1, min_col, max_col, min_row, max_row)
             # results[sample] = torch.Tensor(poisson_edit(addition[sample].permute(1, 2, 0).detach().cpu().numpy(),
             #                                starting_cxr[sample].permute(1, 2, 0).detach().cpu().numpy(),
             #                                mask_lesion[sample].permute(1, 2, 0).detach().cpu().numpy(), (0, 0))).permute(2,0,1)
 
-        #f, axarr = plt.subplots(1,4)
+        # f, axarr = plt.subplots(1,4)
 
         # plt.imshow(results[0].reshape(results[0].shape[-2:]))
         # draw_rectangle(lesion_bbox.cpu().numpy()[0])
         # plt.show()
 
-        return 2*(torch.Tensor(results).cuda() -0.5)
-#        return self.place_lesion(((starting_cxr * addition) - 0.5) / 0.5)
+        return 2 * (torch.Tensor(results).cuda() - 0.5)
+
+    #        return self.place_lesion(((starting_cxr * addition) - 0.5) / 0.5)
 
     def compute_generator_loss(
             self, negative, positive, mask, crop_bbox, lesion_bbox, cxr, cropped_lesion_bbox

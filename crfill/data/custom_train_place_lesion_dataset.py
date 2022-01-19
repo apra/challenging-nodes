@@ -49,6 +49,14 @@ class CustomTrainPlaceLesionDataset(BaseDataset):
         positive_paths,negative_paths, lesion_paths = paths
         self.lesions_paths = lesion_paths
         self.metadata = metadata
+
+        metadata['aspect_ratio'] = []
+        metadata['inverse_aspect_ratio'] = []
+
+        for i in range(len(self.metadata['dim0'])):
+            metadata['aspect_ratio'].append(self.metadata['dim0'][i]/self.metadata['dim1'][i])
+            metadata['inverse_aspect_ratio'].append(self.metadata['dim1'][i] / self.metadata['dim0'][i])
+
         if len(negative_paths) < len(positive_paths):
             print("There are more negative samples than positive ones.")
             positive_paths = positive_paths[:len(negative_paths)]
