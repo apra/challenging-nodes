@@ -346,7 +346,7 @@ class placelesionmodel(torch.nn.Module):
     #             ] = addition[sample]
     #     addition = final_addition
     #     return self.place_lesion(((starting_cxr * addition) - 0.5) / 0.5)
-    def place_addition_on_cxr(self, addition, starting_cxr, lesion_bbox):
+    def place_addition_on_cxr(self, lesion, starting_cxr, lesion_bbox):
         lesion = self.netG.sample(samples=starting_cxr.shape[0])
 
         starting_cxr = (starting_cxr + 1) / 2
@@ -397,6 +397,7 @@ class placelesionmodel(torch.nn.Module):
                 final_addition[
                 sample, :, rnd_x: rnd_x + width, rnd_y: rnd_y + height
                 ] = addition[sample]
+                generated_bbox[sample] = (generated_bbox[sample][0]+rnd_x,generated_bbox[sample][1]+rnd_x, generated_bbox[sample][2]+rnd_y, generated_bbox[sample][3]+rnd_y)
 
         addition = 0.4*addition
         nodule_pixels = mask_lesions>0
@@ -413,7 +414,7 @@ class placelesionmodel(torch.nn.Module):
             max_col = min_col+cols
             input_0 = addition[sample].permute(1,2,0).detach().cpu().numpy()
             input_1 = starting_cxr[sample].permute(1,2,0).detach().cpu().numpy()
-            results[sample] = (1/255)*torch.Tensor(poisson_blend(input_0,input_1 , min_col, max_col, min_row, max_row)).unsqueeze(0)
+            results[sample] = (1/255)*torch.Tensor(poisson_blend(input_0,input_1 , min_col, max_col, min_row, max_row, generated_bbox[sample])).unsqueeze(0)
             # results[sample] = torch.Tensor(poisson_edit(addition[sample].permute(1, 2, 0).detach().cpu().numpy(),
             #                                starting_cxr[sample].permute(1, 2, 0).detach().cpu().numpy(),
             #                                mask_lesion[sample].permute(1, 2, 0).detach().cpu().numpy(), (0, 0))).permute(2,0,1)

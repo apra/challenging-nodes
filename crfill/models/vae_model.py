@@ -530,7 +530,7 @@ class vaemodel(nn.Module):
             mean = mean.unsqueeze(0)
             sigma = sigma.unsqueeze(0)
             mean = mean.repeat(samples, 1, 1).view(b_size * samples, -1)
-            sigma = 10 * sigma.repeat(samples, 1, 1).view(b_size * samples, -1)
+            sigma = sigma.repeat(samples, 1, 1).view(b_size * samples, -1)
 
         q_dist = dists.Normal(mean, sigma)
 

@@ -226,7 +226,7 @@ def poisson_edit(source, target, mask, offset):
     return target
 
 
-def poisson_blend(nodule, lung_photo, x0, x1, y0, y1):
+def poisson_blend(nodule, lung_photo, x0, x1, y0, y1, lesion_bbox):
     """
     Poisson blend the nodule into the selected lung
         nodule: the nodule to blend into the lung picture
