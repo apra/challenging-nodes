@@ -1,4 +1,4 @@
-
+import SimpleITK
 from evalutils import SegmentationAlgorithm
 from evalutils.validators import (
     UniquePathIndicesValidator,
@@ -9,20 +9,22 @@ import json
 from pathlib import Path
 import time
 
+import numpy as np
+import scipy.ndimage as ndi
+import cv2
 import pickle
 import torch
 from collections import defaultdict
 
 from model_submission.trainer.vae_trainer import BaselineVAEOpts
 from model_submission.model.vae_model import vaemodel
-from model_submission.utils.utils import *
+from model_submission.utils.utils import poisson_blend, convert_to_range_0_1
 
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 # This parameter adapts the paths between local execution and execution in docker. You can use this flag to switch between these two modes.
 # For building your docker, set this parameter to True. If False, it will run process.py locally for test purposes.
-execute_in_docker = False
-
+execute_in_docker = True
 
 class Nodulegeneration(SegmentationAlgorithm):
     def __init__(self):

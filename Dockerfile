@@ -5,6 +5,9 @@ RUN groupadd -r algorithm && useradd -m --no-log-init -r -g algorithm algorithm
 RUN mkdir -p /opt/algorithm /input /output \
     && chown algorithm:algorithm /opt/algorithm /input /output
 
+RUN apt-get update
+RUN apt-get install ffmpeg libsm6 libxext6  -y
+
 USER algorithm
 
 WORKDIR /opt/algorithm
@@ -17,7 +20,7 @@ RUN  pip install --upgrade pip
 # Copy all required files so that they are available within the docker image
 # All the codes, weights, anything you need to run the algorithm!
 COPY --chown=algorithm:algorithm requirements.txt /opt/algorithm/
-COPY --chown=algorithm:algorithm entrypoint.sh /opt/algorithm/
+#COPY --chown=algorithm:algorithm entrypoint.sh /opt/algorithm/
 COPY --chown=algorithm:algorithm model_submission /opt/algorithm/model_submission
 
 # Install required python packages via pip - please see the requirements.txt and adapt it to your needs
