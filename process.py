@@ -89,7 +89,9 @@ class Nodulegeneration(SegmentationAlgorithm):
         scale_factor_width = bbox_wid / lesion_width
         scale_factor = min(scale_factor_width, scale_factor_height)
         upscale = ndi.interpolation.zoom(lesion, scale_factor, mode="nearest", order=3)
-        upscale = upscale * 0.4
+        contrast_factor = np.random.uniform(0.3, 0.4)
+        upscale = upscale * contrast_factor
+        #print(contrast_factor)
         return upscale
 
     @staticmethod
@@ -132,7 +134,13 @@ class Nodulegeneration(SegmentationAlgorithm):
             array = np.asarray(array)
             idx = (np.abs(array - value)).argmin()
             return idx
-        print(lesion_bbox)
+
+        def find_in_range(array, value, range=0.05):
+            array = np.asarray(array)
+            candidates = np.where(np.logical_and(np.greater_equal(array, value-range), np.greater_equal(array, value+range)))
+            return candidates[0]
+
+        #print(lesion_bbox)
         xcoords = np.array(self.metadata["dim0"])
         ycoords = np.array(self.metadata["dim1"])
 
@@ -140,12 +148,17 @@ class Nodulegeneration(SegmentationAlgorithm):
         inverse_ratios = ycoords / xcoords
         areas = xcoords * ycoords
 
+
         ratio = (lesion_bbox[3] / lesion_bbox[2])
         area = (lesion_bbox[3] * lesion_bbox[2])
         scaled_area = area/40
 
-        idx = find_nearest(aspect_ratios, ratio)
-        inverse_idx = find_nearest(inverse_ratios, ratio)
+        idxs = find_in_range(aspect_ratios, ratio)
+        inverse_idxs = find_in_range(inverse_ratios, ratio)
+
+        idx = np.random.choice(idxs)
+        inverse_idx = np.random.choice(inverse_idxs)
+
         inverse = False
         if areas[idx] > areas[inverse_idx]:
             sel_idx = idx
@@ -163,6 +176,12 @@ class Nodulegeneration(SegmentationAlgorithm):
             heights = bbox[:,3]-bbox[:,1]
             widths = bbox[:,2]-bbox[:,0]
             areas = heights * widths
+
+            # remove crazy outliers due to wrong otsu binarization:
+            area_mean = np.mean(areas)
+            area_std = np.std(areas)
+            areas = [elem for elem in areas if elem < area_mean + 2 * area_std]
+
             area_idx = find_nearest(areas, area)
             selected_lesion = candidate_lesions[area_idx]
             selected_lesion_crop = crop_lesion[area_idx]
@@ -192,11 +211,12 @@ class Nodulegeneration(SegmentationAlgorithm):
         result = (1 / 255) * poisson_blend(
             upscaled_lesion, input_1, min_col, max_col, min_row, max_row
         )
+        #print(np.mean(selected_lesion_crop))
         fig, ax = plt.subplots(1,2, figsize=(10,5), dpi=100)
         ax = ax.flatten()
-        ax[0].imshow(starting_cxr)
+        ax[0].imshow(starting_cxr, cmap='gray')
 
-        ax[1].imshow(result)
+        ax[1].imshow(result,cmap='gray')
         ax[1].add_patch(matplotlib.patches.Rectangle((lesion_bbox[0], lesion_bbox[1]), lesion_bbox[2], lesion_bbox[3], facecolor="none", ec='k', lw=1))
         plt.show()
         # results[sample] = torch.Tensor(poisson_edit(addition[sample].permute(1, 2, 0).detach().cpu().numpy(),

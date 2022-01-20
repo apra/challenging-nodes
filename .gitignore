@@ -23,6 +23,8 @@ lib64/
 parts/
 nodule_patches/
 model_submission/model/latest_net_G.pth
+model_submission/model/vae_64_sigma_down_latent_16/
+model_submission/all_lesions.npz
 
 sdist/
 var/
