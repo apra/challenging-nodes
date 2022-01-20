@@ -8,8 +8,14 @@ from models.create_mask import MaskCreator
 import random
 import numpy as np
 from models.vae_model import vaemodel
-from util.place_lesion_utils import contrast_matching, poisson_blend, poisson_edit, convert_to_range_0_1, \
-    get_nodule_diameter, get_nodule_bbox
+from util.place_lesion_utils import (
+    contrast_matching,
+    poisson_blend,
+    poisson_edit,
+    convert_to_range_0_1,
+    get_nodule_diameter,
+    get_nodule_bbox,
+)
 import torchvision
 import cv2
 import matplotlib.pyplot as plt
@@ -18,7 +24,7 @@ import scipy.ndimage as ndi
 from util.plot_util import draw_rectangle
 import pandas as pd
 
-matplotlib.use('tkagg')
+matplotlib.use("tkagg")
 
 BaselineVAEOpts = {
     "batch_size": 64,
@@ -245,7 +251,7 @@ class placelesionmodel(torch.nn.Module):
 
     def preprocess_input(self, data):
         if (
-                self.use_gpu()
+            self.use_gpu()
         ):  # this command is irrelevant, all data will already be at the GPU due to DataParallel in pix2pixtrainer
             data["neg_cropped_normalized_cxr"] = data[
                 "neg_cropped_normalized_cxr"
@@ -265,14 +271,14 @@ class placelesionmodel(torch.nn.Module):
         )
 
     def g_image_loss(
-            self,
-            coarse_image,
-            negative,
-            composed_image,
-            positive,
-            mask,
-            composed_full_image,
-            full_image_bbox,
+        self,
+        coarse_image,
+        negative,
+        composed_image,
+        positive,
+        mask,
+        composed_full_image,
+        full_image_bbox,
     ):
         G_losses = {}
 
@@ -287,24 +293,24 @@ class placelesionmodel(torch.nn.Module):
             pred_fake, pred_real = self.discriminate(composed_image, positive, mask)
 
             G_losses["GAN"] = (
-                    self.criterionGAN(pred_fake, True, for_discriminator=False)
-                    * self.opt.generator_weight
+                self.criterionGAN(pred_fake, True, for_discriminator=False)
+                * self.opt.generator_weight
             )
 
         if self.opt.vgg_loss and not self.opt.no_fine_loss:
             G_losses["VGG"] = (
-                    self.criterionVGG(negative, positive) * self.opt.lambda_vgg
+                self.criterionVGG(negative, positive) * self.opt.lambda_vgg
             )
         if not self.opt.no_l1_loss:
             if coarse_image is not None:
                 G_losses["L1_coarse"] = (
-                        torch.nn.functional.l1_loss(coarse_image, negative)
-                        * self.opt.beta_l1
+                    torch.nn.functional.l1_loss(coarse_image, negative)
+                    * self.opt.beta_l1
                 )
             if not self.opt.no_fine_loss:
                 G_losses["L1_fine"] = (
-                        torch.nn.functional.l1_loss(composed_image, negative)
-                        * self.opt.beta_l1
+                    torch.nn.functional.l1_loss(composed_image, negative)
+                    * self.opt.beta_l1
                 )
         return G_losses
 
@@ -363,7 +369,7 @@ class placelesionmodel(torch.nn.Module):
         scale_factor_height = bbox_height / lesion_height
         scale_factor_width = bbox_wid / lesion_width
         scale_factor = min(scale_factor_width, scale_factor_height)
-        upscale = ndi.interpolation.zoom(lesion, scale_factor, mode='nearest', order=3)
+        upscale = ndi.interpolation.zoom(lesion, scale_factor, mode="nearest", order=3)
         upscale = upscale * 0.4
         return upscale
 
@@ -371,20 +377,32 @@ class placelesionmodel(torch.nn.Module):
         addition = convert_to_range_0_1(lesion_image)
 
         new = addition * 255
-        new = new.squeeze().detach().cpu().numpy().astype('uint8')
+        new = new.squeeze().detach().cpu().numpy().astype("uint8")
         generated_bbox = []
         scaled_down_lesions = []
 
         for sample in range(addition.shape[0]):
             result = cv2.GaussianBlur(new[sample], (11, 11), 5)
-            result = cv2.threshold(result, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+            result = cv2.threshold(
+                result, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
+            )[1]
             result = 255 - result
             non_zero = np.argwhere(result)
             top_left = non_zero.min(axis=0)
             bottom_right = non_zero.max(axis=0)
-            generated_bbox.append((top_left[0], top_left[1], bottom_right[0], bottom_right[1]))
-            result = addition[sample][:, top_left[0]:bottom_right[0] + 1,
-                     top_left[1]:bottom_right[1] + 1].detach().cpu().numpy()
+            generated_bbox.append(
+                (top_left[0], top_left[1], bottom_right[0], bottom_right[1])
+            )
+            result = (
+                addition[sample][
+                    :,
+                    top_left[0] : bottom_right[0] + 1,
+                    top_left[1] : bottom_right[1] + 1,
+                ]
+                .detach()
+                .cpu()
+                .numpy()
+            )
             scaled_down_lesions.append(result.reshape(result.shape[-2:]))
 
         return generated_bbox, scaled_down_lesions
@@ -398,8 +416,8 @@ class placelesionmodel(torch.nn.Module):
             return idx
 
         db = self.dataset.metadata
-        xcoords = np.array(db['dim0'])
-        ycoords = np.array(db['dim1'])
+        xcoords = np.array(db["dim0"])
+        ycoords = np.array(db["dim1"])
 
         aspect_ratios = xcoords / ycoords
         inverse_ratios = ycoords / xcoords
@@ -419,7 +437,12 @@ class placelesionmodel(torch.nn.Module):
                 inverse = True
 
             image_path = self.dataset.lesions_paths[sel_idx]
-            loaded_lesion = torch.Tensor(np.load(image_path)['arr_0']).unsqueeze(0).unsqueeze(0).cuda()
+            loaded_lesion = (
+                torch.Tensor(np.load(image_path)["arr_0"])
+                .unsqueeze(0)
+                .unsqueeze(0)
+                .cuda()
+            )
             lesion = self.netG.sample(x=loaded_lesion, samples=10)
             bbox, crop_lesion = self.find_lesion(lesion)
 
@@ -435,21 +458,33 @@ class placelesionmodel(torch.nn.Module):
         addition = convert_to_range_0_1(lesion)
 
         new = addition * 255
-        new = new.squeeze().detach().cpu().numpy().astype('uint8')
+        new = new.squeeze().detach().cpu().numpy().astype("uint8")
         mask_lesions = torch.zeros_like(addition)
         generated_bbox = []
         scaled_down_lesions = []
 
         for sample in range(mask_lesions.shape[0]):
             result = cv2.GaussianBlur(new[sample], (11, 11), 5)
-            result = cv2.threshold(result, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+            result = cv2.threshold(
+                result, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
+            )[1]
             result = 255 - result
             non_zero = np.argwhere(result)
             top_left = non_zero.min(axis=0)
             bottom_right = non_zero.max(axis=0)
-            generated_bbox.append((top_left[0], top_left[1], bottom_right[0], bottom_right[1]))
-            result = addition[sample][:, top_left[0]:bottom_right[0] + 1,
-                     top_left[1]:bottom_right[1] + 1].detach().cpu().numpy()
+            generated_bbox.append(
+                (top_left[0], top_left[1], bottom_right[0], bottom_right[1])
+            )
+            result = (
+                addition[sample][
+                    :,
+                    top_left[0] : bottom_right[0] + 1,
+                    top_left[1] : bottom_right[1] + 1,
+                ]
+                .detach()
+                .cpu()
+                .numpy()
+            )
             scaled_down_lesions.append(result.reshape(result.shape[-2:]))
 
         results = np.zeros_like(starting_cxr.detach().cpu().numpy())
@@ -460,10 +495,20 @@ class placelesionmodel(torch.nn.Module):
             cols = lesion_bbox[sample][2].item()
             max_row = min_row + rows
             max_col = min_col + cols
-            upscaled_lesion = self.upscale_lesion(scaled_down_lesions[sample], lesion_bbox[sample])
+            upscaled_lesion = self.upscale_lesion(
+                scaled_down_lesions[sample], lesion_bbox[sample]
+            )
             # input_0 = scaled_down_lesions[sample]
-            input_1 = starting_cxr[sample].detach().cpu().numpy().reshape((starting_cxr[sample].shape[-2:]))
-            results[sample] = (1 / 255) * poisson_blend(upscaled_lesion, input_1, min_col, max_col, min_row, max_row)
+            input_1 = (
+                starting_cxr[sample]
+                .detach()
+                .cpu()
+                .numpy()
+                .reshape((starting_cxr[sample].shape[-2:]))
+            )
+            results[sample] = (1 / 255) * poisson_blend(
+                upscaled_lesion, input_1, min_col, max_col, min_row, max_row
+            )
             # results[sample] = torch.Tensor(poisson_edit(addition[sample].permute(1, 2, 0).detach().cpu().numpy(),
             #                                starting_cxr[sample].permute(1, 2, 0).detach().cpu().numpy(),
             #                                mask_lesion[sample].permute(1, 2, 0).detach().cpu().numpy(), (0, 0))).permute(2,0,1)
@@ -479,7 +524,7 @@ class placelesionmodel(torch.nn.Module):
     #        return self.place_lesion(((starting_cxr * addition) - 0.5) / 0.5)
 
     def compute_generator_loss(
-            self, negative, positive, mask, crop_bbox, lesion_bbox, cxr, cropped_lesion_bbox
+        self, negative, positive, mask, crop_bbox, lesion_bbox, cxr, cropped_lesion_bbox
     ):
         return NotImplementedError
 
@@ -537,10 +582,10 @@ class placelesionmodel(torch.nn.Module):
             real = []
             for p in pred:
                 fake.append([tensor[: tensor.size(0) // 2] for tensor in p])
-                real.append([tensor[tensor.size(0) // 2:] for tensor in p])
+                real.append([tensor[tensor.size(0) // 2 :] for tensor in p])
         else:
             fake = pred[: pred.size(0) // 2]
-            real = pred[pred.size(0) // 2:]
+            real = pred[pred.size(0) // 2 :]
 
         return fake, real
 

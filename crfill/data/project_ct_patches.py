@@ -277,12 +277,21 @@ output_folder = Path('../../../data/dataset_node21/ct_patches/projected')
 output_folder_images = Path('../../../data/dataset_node21/ct_patches/projected/images')
 output_folder_segs = Path('../../../data/dataset_node21/ct_patches/projected/segmentation')
 temp_images = Path('images')
-output_folder_images.mkdir(exist_ok=True, parents=True)
-temp_images.mkdir(exist_ok=True, parents=True)
-output_folder_segs.mkdir(exist_ok=True, parents=True)
+# output_folder_images.mkdir(exist_ok=True, parents=True)
+# temp_images.mkdir(exist_ok=True, parents=True)
+# output_folder_segs.mkdir(exist_ok=True, parents=True)
 
 ct_patches = [Path(ct_patches_folder) / f for f in listdir(ct_patches_folder) if isfile(join(ct_patches_folder, f))]
 ct_segs = [Path(ct_segs_folder) / f for f in listdir(ct_segs_folder) if isfile(join(ct_segs_folder, f))]
+
+projected_files = [Path(output_folder_images) / f for f in listdir(output_folder_images) if
+                   isfile(join(output_folder_images, f))]
+
+all_lesions = np.zeros((len(projected_files), 64, 64))
+for i, file in enumerate(projected_files):
+    all_lesions[i] = np.load(str(file))['arr_0']
+    print(all_lesions[i].shape)
+np.savez(str(output_folder/Path("all_lesions.npz")), all_lesions)
 
 
 def simple_imshow(image, ax):
@@ -290,58 +299,58 @@ def simple_imshow(image, ax):
     ax.get_xaxis().set_visible(None)
     ax.get_yaxis().set_visible(None)
 
-
-# metadata = "id,h,w\n"
-accumulated_nodules = []
-accumulated_segs = []
-LESION_SIZE = 64
-metadata = {"id": [], "dim0":[], "dim1": []}
-for j, (ct_path, ct_seg) in enumerate(zip(ct_patches, ct_segs)):
-    print(ct_path.name[:-4])
-    image = SimpleITK.ReadImage(str(ct_path))
-
-    nodules, segs = process_CT_patches(str(ct_path), str(ct_seg))
-    for i, (nod, seg) in enumerate(zip(nodules, segs)):
-        nodule_id = f'{ct_path.name[:-4]}_{i}'
-
-        final_nodule = place_nodule(nod, (LESION_SIZE, LESION_SIZE), mode="nodule")
-        final_seg = place_nodule(seg, (LESION_SIZE, LESION_SIZE), mode="segmentation")
-
-        metadata["id"].append(nodule_id)
-        metadata["dim0"].append(nod.shape[0])
-        metadata["dim1"].append(nod.shape[1])
-
-        accumulated_nodules.append(final_nodule)
-        accumulated_segs.append(final_seg)
-
-min_value = 10
-max_value = -10
-for nodule in accumulated_nodules:
-    if nodule.max() > max_value:
-        max_value = nodule.max()
-    if nodule.min() < min_value:
-        min_value = nodule.min()
-
-metadata['min'] = min_value
-metadata['max'] = max_value
-
-for i,(nodule, seg) in enumerate(zip(accumulated_nodules, accumulated_segs)):
-    if nodule.max() > max_value:
-        max_value = nodule.max()
-    if nodule.min() < min_value:
-        min_value = nodule.min()
-
-    nodule = (nodule-metadata['min'])/(metadata['max']-metadata['min'])
-
-    np.savez(str(output_folder_images / Path(f'{metadata["id"][i]}.npz')), nodule)
-    np.savez(str(output_folder_segs / Path(f'{metadata["id"][i]}_seg.npz')), seg)
-    #
-    # fig, ax = make_subplots(2, 2, figsize=(15, 30), kw={'dpi': 100})
-    # simple_imshow(final_nodule, ax[0])
-    # simple_imshow(nod, ax[1])
-    # simple_imshow(final_seg, ax[2])
-    # simple_imshow(seg, ax[3])
-    # savefig(temp_images / Path(f"test{j}.png"))
-
-with open(output_folder / Path("metadata.pkl"), "wb") as f:
-    pickle.dump(metadata, f)
+#
+# # metadata = "id,h,w\n"
+# accumulated_nodules = []
+# accumulated_segs = []
+# LESION_SIZE = 64
+# metadata = {"id": [], "dim0":[], "dim1": []}
+# for j, (ct_path, ct_seg) in enumerate(zip(ct_patches, ct_segs)):
+#     print(ct_path.name[:-4])
+#     image = SimpleITK.ReadImage(str(ct_path))
+#
+#     nodules, segs = process_CT_patches(str(ct_path), str(ct_seg))
+#     for i, (nod, seg) in enumerate(zip(nodules, segs)):
+#         nodule_id = f'{ct_path.name[:-4]}_{i}'
+#
+#         final_nodule = place_nodule(nod, (LESION_SIZE, LESION_SIZE), mode="nodule")
+#         final_seg = place_nodule(seg, (LESION_SIZE, LESION_SIZE), mode="segmentation")
+#
+#         metadata["id"].append(nodule_id)
+#         metadata["dim0"].append(nod.shape[0])
+#         metadata["dim1"].append(nod.shape[1])
+#
+#         accumulated_nodules.append(final_nodule)
+#         accumulated_segs.append(final_seg)
+#
+# min_value = 10
+# max_value = -10
+# for nodule in accumulated_nodules:
+#     if nodule.max() > max_value:
+#         max_value = nodule.max()
+#     if nodule.min() < min_value:
+#         min_value = nodule.min()
+#
+# metadata['min'] = min_value
+# metadata['max'] = max_value
+#
+# for i,(nodule, seg) in enumerate(zip(accumulated_nodules, accumulated_segs)):
+#     if nodule.max() > max_value:
+#         max_value = nodule.max()
+#     if nodule.min() < min_value:
+#         min_value = nodule.min()
+#
+#     nodule = (nodule-metadata['min'])/(metadata['max']-metadata['min'])
+#
+#     np.savez(str(output_folder_images / Path(f'{metadata["id"][i]}.npz')), nodule)
+#     np.savez(str(output_folder_segs / Path(f'{metadata["id"][i]}_seg.npz')), seg)
+#     #
+#     # fig, ax = make_subplots(2, 2, figsize=(15, 30), kw={'dpi': 100})
+#     # simple_imshow(final_nodule, ax[0])
+#     # simple_imshow(nod, ax[1])
+#     # simple_imshow(final_seg, ax[2])
+#     # simple_imshow(seg, ax[3])
+#     # savefig(temp_images / Path(f"test{j}.png"))
+#
+# with open(output_folder / Path("metadata.pkl"), "wb") as f:
+#     pickle.dump(metadata, f)

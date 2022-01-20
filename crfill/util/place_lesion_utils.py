@@ -23,7 +23,8 @@ def get_nodule_diameter(seg_image):
 
     return diameter
 
-def get_nodule_bbox(seg_image:np.array):
+
+def get_nodule_bbox(seg_image: np.array):
     seg_image[seg_image != 0] = 255
     seg_image = seg_image.astype(int)
     properties = regionprops(seg_image)
@@ -35,13 +36,14 @@ def get_nodule_bbox(seg_image:np.array):
 
     return diameter, min_row, min_col, max_row, max_col
 
+
 def generate_2d(X_ct, p_lambda=0.85):
-    '''
+    """
     Generate 2D digitally reconstructed radiographs from CT scan. (DRR, fake CXR, simulated CXR)
     X_ct: CT scan
     p-lambda:  β controls the boosting of X-ray absorption as the tissue density increases.
     We have chosen β=0.85 for our experiments after performing a visual comparison with real chest X-rays.
-    '''
+    """
     X_ct[X_ct > 400] = 400
     X_ct[X_ct < -500] = -500
     X_ct += 1024
@@ -55,17 +57,30 @@ def generate_2d(X_ct, p_lambda=0.85):
 
 
 def resample(image, voxel_spacing, new_spacing=None, new_shape=None, order=1):
-    """ Resamples the scan according to the either new spacing or new shape
-        When new_spacing and new_shape are provided, new_shape has the priority
-        use order = 1 for nearest neighbor and order = 3 for cubic interpolation
-        @author: Joris Bukala+ Gabriel Humpire
+    """Resamples the scan according to the either new spacing or new shape
+    When new_spacing and new_shape are provided, new_shape has the priority
+    use order = 1 for nearest neighbor and order = 3 for cubic interpolation
+    @author: Joris Bukala+ Gabriel Humpire
     """
     assert new_spacing is not None or new_shape is not None
-    if np.dtype(image[0, 0, 0]) is np.dtype(np.int16) and np.min(image) < 0 and np.max(image) > 50 and order == 1:
-        warnings.warn("Order 1 selected for image that looks as a scan, try using order 3")
-    if np.dtype(image[0, 0, 0]) in [np.dtype(np.uint8), np.dtype(np.int16)] and np.min(image) == 0 and np.max(
-            image) <= 50 and order == 3:
-        warnings.warn("Order 3 selected for image that looks as a reference mask, try using order 1")
+    if (
+        np.dtype(image[0, 0, 0]) is np.dtype(np.int16)
+        and np.min(image) < 0
+        and np.max(image) > 50
+        and order == 1
+    ):
+        warnings.warn(
+            "Order 1 selected for image that looks as a scan, try using order 3"
+        )
+    if (
+        np.dtype(image[0, 0, 0]) in [np.dtype(np.uint8), np.dtype(np.int16)]
+        and np.min(image) == 0
+        and np.max(image) <= 50
+        and order == 3
+    ):
+        warnings.warn(
+            "Order 3 selected for image that looks as a reference mask, try using order 1"
+        )
 
     if new_shape is not None:
         new_shape = np.array(new_shape)
@@ -75,13 +90,18 @@ def resample(image, voxel_spacing, new_spacing=None, new_shape=None, order=1):
         if voxel_spacing[0] == voxel_spacing[1]:
             voxel_spacing = np.flipud(voxel_spacing)
         scan_sz_mm = [sz * voxel_spacing[idx] for idx, sz in enumerate(image.shape)]
-        new_shape = [round(float(sz_mm) / float(new_spacing[idx])) for idx, sz_mm in enumerate(scan_sz_mm)]
+        new_shape = [
+            round(float(sz_mm) / float(new_spacing[idx]))
+            for idx, sz_mm in enumerate(scan_sz_mm)
+        ]
         new_shape = np.array(new_shape)
         real_resize_factor = new_shape / image.shape
 
     new_spacing = np.flipud(new_spacing)
 
-    image = ndi.interpolation.zoom(image, real_resize_factor, mode='nearest', order=order)
+    image = ndi.interpolation.zoom(
+        image, real_resize_factor, mode="nearest", order=order
+    )
     return image, new_spacing
 
 
@@ -91,25 +111,37 @@ def convert_to_range_0_1(image_data):
         image_data: the image to normalize
     returns the normalized image
     """
-    image_max,_ = torch.max(image_data.view(image_data.shape[0], image_data.shape[1]* image_data.shape[2]* image_data.shape[3]), dim=1)
-    image_min,_ = torch.min(image_data.view(image_data.shape[0], image_data.shape[1]* image_data.shape[2]* image_data.shape[3]), dim=1)
+    image_max, _ = torch.max(
+        image_data.view(
+            image_data.shape[0],
+            image_data.shape[1] * image_data.shape[2] * image_data.shape[3],
+        ),
+        dim=1,
+    )
+    image_min, _ = torch.min(
+        image_data.view(
+            image_data.shape[0],
+            image_data.shape[1] * image_data.shape[2] * image_data.shape[3],
+        ),
+        dim=1,
+    )
     image_min = image_min.unsqueeze(1).unsqueeze(2).unsqueeze(3)
     image_max = image_max.unsqueeze(1).unsqueeze(2).unsqueeze(3)
     try:
         return (image_data - image_min) / (image_max - image_min)
     except:
-        print('invalid value encounteered')
+        print("invalid value encounteered")
         return image_data
 
 
 def contrast_matching(nodule_2d, lung_photo, nodule_pixels):
     """
-     Contrast matching according to Litjens et al.
-     With some additional clip to prevent negative values or 0.
-      nodule_2d: intensities of the nodule
-      lung_photo: intensities of this particular lung area
-     returns c, but is clipped to 0.4 since low values made the nodules neigh
-     invisible sometimes.
+    Contrast matching according to Litjens et al.
+    With some additional clip to prevent negative values or 0.
+     nodule_2d: intensities of the nodule
+     lung_photo: intensities of this particular lung area
+    returns c, but is clipped to 0.4 since low values made the nodules neigh
+    invisible sometimes.
     """
     it = torch.mean(nodule_2d[nodule_pixels].flatten())
 
@@ -245,24 +277,26 @@ def poisson_blend(nodule, lung_photo, x0, x1, y0, y1):
         non_zero = np.argwhere(nodule)
         top_left = non_zero.min(axis=0)
         bottom_right = non_zero.max(axis=0)
-        nodule = nodule[top_left[0]:bottom_right[0] + 1, top_left[1]:bottom_right[1] + 1]
+        nodule = nodule[
+            top_left[0] : bottom_right[0] + 1, top_left[1] : bottom_right[1] + 1
+        ]
 
         obj = nodule
 
         # convert np to cv2
-        cv2.imwrite('test_img.jpg', im * 255)
-        cv2.imwrite('test_obj.jpg', obj * 255)
-        im2 = cv2.imread('test_img.jpg')
-        obj2 = cv2.imread('test_obj.jpg')
+        cv2.imwrite("test_img.jpg", im * 255)
+        cv2.imwrite("test_obj.jpg", obj * 255)
+        im2 = cv2.imread("test_img.jpg")
+        obj2 = cv2.imread("test_obj.jpg")
 
         # add gaussian blurring to reduce artefacts
         mask_blur = cv2.GaussianBlur(nodule, (5, 5), 0)
         # print('max min of obj2',np.max(obj2), np.min(obj2))
-        cv2.imwrite('test_obj_masked2.jpg', obj2 / 255)
+        cv2.imwrite("test_obj_masked2.jpg", obj2 / 255)
 
         # apply correction mask
         mask2 = np.ones(obj2.shape, obj2.dtype) * CORRECTION
-        test_obj2 = cv2.imread('test_obj_masked2.jpg')
+        test_obj2 = cv2.imread("test_obj_masked2.jpg")
 
         # Poisson blend the images
         mixed_clone2 = cv2.seamlessClone(obj2, im2, mask2, center, cv2.MIXED_CLONE)
@@ -270,28 +304,35 @@ def poisson_blend(nodule, lung_photo, x0, x1, y0, y1):
 
     except Exception as e:
         print(e)
-        print('there is a problem with cv2 poisson blending op')
+        print("there is a problem with cv2 poisson blending op")
         return np.array(lung_photo).squeeze()
 
 
 def process_CT_patches(ct_path, seg_path, required_diameter):
-    '''
+    """
     Resample ct nodule patches and generates fake CXR nodule patches.
-    '''
+    """
     ct_image = SimpleITK.GetArrayFromImage(SimpleITK.ReadImage(ct_path))
     seg_img = SimpleITK.GetArrayFromImage(SimpleITK.ReadImage(seg_path))
     diameter = get_nodule_diameter(seg_img)
     scaling_factor = diameter / required_diameter
 
-    image_resampled, new_spacing = resample(ct_image, voxel_spacing=[1, 1, 1],
-                                            new_spacing=[scaling_factor, scaling_factor, scaling_factor])
-    seg_image_resampled, new_spacing = resample(seg_img, voxel_spacing=[1, 1, 1],
-                                                new_spacing=[scaling_factor, scaling_factor, scaling_factor])
+    image_resampled, new_spacing = resample(
+        ct_image,
+        voxel_spacing=[1, 1, 1],
+        new_spacing=[scaling_factor, scaling_factor, scaling_factor],
+    )
+    seg_image_resampled, new_spacing = resample(
+        seg_img,
+        voxel_spacing=[1, 1, 1],
+        new_spacing=[scaling_factor, scaling_factor, scaling_factor],
+    )
     # put black values to the ct patch outside nodules.
-    image_resampled[seg_image_resampled <= np.min(seg_image_resampled)] = np.min(image_resampled)
+    image_resampled[seg_image_resampled <= np.min(seg_image_resampled)] = np.min(
+        image_resampled
+    )
     # generate 2D digitially reconstructed CXR.
     X_ct_2d_resampled = generate_2d(image_resampled)
     # X_ct_2d_resampled[seg_image_resampled<=np.min(seg_image_resampled)]=np.min(X_ct_2d_resampled)
 
     return X_ct_2d_resampled, diameter
-

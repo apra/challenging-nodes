@@ -19,6 +19,7 @@ import visualization.vis_utils as visualize_util
 from PIL import Image
 from scipy import stats
 
+
 class Interpolate(nn.Module):
     """Wrapper for torch.nn.functional.interpolate."""
 
@@ -518,7 +519,14 @@ class vaemodel(nn.Module):
         print(f"load {self.opt.network_path}")
         util.load_network_path(self, self.opt.network_path)
 
-    def sample(self, x=None, samples=2, change_dim:int=None, change_val:float=0., out_dir: Path = None):
+    def sample(
+        self,
+        x=None,
+        samples=2,
+        change_dim: int = None,
+        change_val: float = 0.0,
+        out_dir: Path = None,
+    ):
         b_size = samples
         mean = torch.zeros((b_size, self.opt.latent_size)).to("cuda")
         sigma = torch.ones((b_size, self.opt.latent_size)).to("cuda")
@@ -531,16 +539,20 @@ class vaemodel(nn.Module):
             mean = mean.unsqueeze(0)
             sigma = sigma.unsqueeze(0)
             mean = mean.repeat(samples, 1, 1).view(b_size * samples, -1)
-            sigma = 0.0001*sigma.repeat(samples, 1, 1).view(b_size * samples, -1)
+            sigma = 0.0001 * sigma.repeat(samples, 1, 1).view(b_size * samples, -1)
 
         if change_dim is not None:
             # torch.manual_seed(0)
             mean2 = torch.rand_like(mean)
-            starting_prob = stats.norm.cdf(mean2.detach().cpu().numpy(), loc=0., scale=1.)
-            starting_prob[:,change_dim] = 0
+            starting_prob = stats.norm.cdf(
+                mean2.detach().cpu().numpy(), loc=0.0, scale=1.0
+            )
+            starting_prob[:, change_dim] = 0
             change_array = numpy.zeros_like(starting_prob)
-            change_array[:,change_dim] = change_val
-            z = torch.Tensor(stats.norm.ppf(starting_prob+change_array, loc=0., scale=1.)).to("cuda")
+            change_array[:, change_dim] = change_val
+            z = torch.Tensor(
+                stats.norm.ppf(starting_prob + change_array, loc=0.0, scale=1.0)
+            ).to("cuda")
         else:
             q_dist = dists.Normal(mean, sigma)
 
@@ -550,7 +562,7 @@ class vaemodel(nn.Module):
         decoder_output = self.decoder(z)
         # x_recon = decoder_output
         # x_recon = torch.clamp(decoder_output, 0, 1)
-        x_recon = decoder_output #.sigmoid()
+        x_recon = decoder_output  # .sigmoid()
         if out_dir is not None:
             out = torch.zeros(x_recon.shape, dtype=torch.uint8)
             for i, output in enumerate(x_recon):

@@ -1,6 +1,5 @@
 import torch
-from models.networks.sync_batchnorm import DataParallelWithCallback
-from models.vae_model import vaemodel
+from model_submission.model.vae_model import vaemodel
 
 # from models.pix2pix_model import Pix2PixModel
 
@@ -53,12 +52,8 @@ class VAETrainer:
         BaselineVAEOpts["model"]["beta_kl"] = self.opt.beta_kl
         BaselineVAEOpts["model"]["encoder_params"]["downsample"] = self.opt.downsample
 
-        self.model = vaemodel(opt=opt, **BaselineVAEOpts["model"])
-        if len(opt.gpu_ids) > 0:
-            self.model = DataParallelWithCallback(self.model, device_ids=opt.gpu_ids)
-            self.model_on_one_gpu = self.model.module
-        else:
-            self.model_on_one_gpu = self.model
+        self.model = vaemodel(**BaselineVAEOpts["model"])
+        self.model_on_one_gpu = self.model
 
         self.generated = None
         self.inputs = None

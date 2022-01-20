@@ -9,15 +9,16 @@ import torch
 import torch.distributions as dists
 from torch import nn
 from torch.nn import functional as F
-import util.util as util
+import model_submission.util as util
 
 from pathlib import Path
 
 import numpy as np
 
-import visualization.vis_utils as visualize_util
+import model_submission.vis_utils as visualize_util
 from PIL import Image
 from scipy import stats
+
 
 class Interpolate(nn.Module):
     """Wrapper for torch.nn.functional.interpolate."""
@@ -442,16 +443,15 @@ class vaemodel(nn.Module):
     latent_size: int
     num_slots: int
     beta_kl: float
-    #opt: Dict
+    # opt: Dict
 
     decoder_params: DecoderParams
     encoder_params: EncoderParams
     input_channels: int = 1
 
     # Fixed options:
-    network_path: str = "model_submission/model/latest_net_G.pth"
-    #latent_size: int = 64
-
+    network_path: str = None
+    # latent_size: int = 64
 
     sigma: float = 0.09
 
@@ -520,7 +520,14 @@ class vaemodel(nn.Module):
         print(f"load {self.network_path}")
         util.load_network_path(self, self.network_path)
 
-    def sample(self, x=None, samples=2, change_dim:int=None, change_val:float=0., out_dir: Path = None):
+    def sample(
+        self,
+        x=None,
+        samples=2,
+        explore_dim: int = None,
+        change_val: float = 0.0,
+        out_dir: Path = None,
+    ):
         b_size = samples
         mean = torch.zeros((b_size, self.latent_size)).to("cuda")
         sigma = torch.ones((b_size, self.latent_size)).to("cuda")
@@ -530,19 +537,13 @@ class vaemodel(nn.Module):
             encoder_out = self.forward_vae_slots(x)
             mean = encoder_out["latent_means"]
             sigma = encoder_out["latent_sigmas"]
-            mean = mean.unsqueeze(0)
-            sigma = sigma.unsqueeze(0)
-            mean = mean.repeat(samples, 1, 1).view(b_size * samples, -1)
-            sigma = 0.0001*sigma.repeat(samples, 1, 1).view(b_size * samples, -1)
 
-        if change_dim is not None:
+        if explore_dim is not None:
             # torch.manual_seed(0)
-            mean2 = torch.rand_like(mean)
-            starting_prob = stats.norm.cdf(mean2.detach().cpu().numpy(), loc=0., scale=1.)
-            starting_prob[:,change_dim] = 0
-            change_array = numpy.zeros_like(starting_prob)
-            change_array[:,change_dim] = change_val
-            z = torch.Tensor(stats.norm.ppf(starting_prob+change_array, loc=0., scale=1.)).to("cuda")
+            base_code = mean.squeeze().cpu().numpy()
+            code = np.repeat(np.expand_dims(base_code, 0), samples, axis=0)
+            code[:, explore_dim] = visualize_util.cycle_gaussian(base_code[explore_dim], samples)
+            z = torch.Tensor(code).to("cuda")
         else:
             q_dist = dists.Normal(mean, sigma)
 
@@ -552,7 +553,7 @@ class vaemodel(nn.Module):
         decoder_output = self.decoder(z)
         # x_recon = decoder_output
         # x_recon = torch.clamp(decoder_output, 0, 1)
-        x_recon = decoder_output #.sigmoid()
+        x_recon = decoder_output  # .sigmoid()
         if out_dir is not None:
             out = torch.zeros(x_recon.shape, dtype=torch.uint8)
             for i, output in enumerate(x_recon):
