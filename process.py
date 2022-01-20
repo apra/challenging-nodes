@@ -1,30 +1,21 @@
-import SimpleITK
-import numpy as np
 
 from evalutils import SegmentationAlgorithm
 from evalutils.validators import (
     UniquePathIndicesValidator,
     UniqueImagesValidator,
 )
-import matplotlib
-from utils import *
-from typing import Dict
+
 import json
-from skimage.measure import regionprops
-import imageio
 from pathlib import Path
 import time
-import pandas as pd
-import random
-from random import randrange
-import os
-import matplotlib.pyplot as plt
 
 import pickle
 import torch
+from collections import defaultdict
 
 from model_submission.trainer.vae_trainer import BaselineVAEOpts
 from model_submission.model.vae_model import vaemodel
+from model_submission.utils.utils import *
 
 import matplotlib.pyplot as plt
 
@@ -81,17 +72,17 @@ class Nodulegeneration(SegmentationAlgorithm):
 
     @staticmethod
     def upscale_lesion(lesion, lesion_bbox):
-        bbox_height = lesion_bbox[3].item()
-        bbox_wid = lesion_bbox[2].item()
+        bbox_height = lesion_bbox[3]
+        bbox_wid = lesion_bbox[2]
         lesion_height = lesion.shape[0]
         lesion_width = lesion.shape[1]
         scale_factor_height = bbox_height / lesion_height
         scale_factor_width = bbox_wid / lesion_width
         scale_factor = min(scale_factor_width, scale_factor_height)
         upscale = ndi.interpolation.zoom(lesion, scale_factor, mode="nearest", order=3)
-        contrast_factor = np.random.uniform(0.3, 0.4)
+        contrast_factor = np.random.uniform(0.34, 0.4)
         upscale = upscale * contrast_factor
-        #print(contrast_factor)
+        # print(f"c fac: {contrast_factor}")
         return upscale
 
     @staticmethod
@@ -153,25 +144,47 @@ class Nodulegeneration(SegmentationAlgorithm):
         area = (lesion_bbox[3] * lesion_bbox[2])
         scaled_area = area/40
 
-        idxs = find_in_range(aspect_ratios, ratio)
-        inverse_idxs = find_in_range(inverse_ratios, ratio)
+        try:
+            idxs = find_in_range(aspect_ratios, ratio)
+            inverse_idxs = find_in_range(inverse_ratios, ratio)
 
-        idx = np.random.choice(idxs)
-        inverse_idx = np.random.choice(inverse_idxs)
+            idx = np.random.choice(idxs, 3, replace=False)
+            inverse_idx = np.random.choice(inverse_idxs, 3, replace=False)
 
-        inverse = False
-        if areas[idx] > areas[inverse_idx]:
-            sel_idx = idx
-        else:
-            sel_idx = inverse_idx
-            inverse = True
+            inverse = defaultdict(bool)
+            sel_idx = []
+            for index in range(len(idx)):
+                if areas[idx[index]] > areas[inverse_idx[index]]:
+                    sel_idx.append(idx[index])
+                else:
+                    sel_idx.append(inverse_idx[index])
+                    inverse[inverse_idx[index]] = True
 
-        lesion: np.ndarray = self.lesions[sel_idx]
-        if inverse:
-            lesion = lesion.transpose()
-        loaded_lesion = torch.Tensor(lesion).unsqueeze(0).unsqueeze(0).cuda()
+        except:
+            idx = find_nearest(aspect_ratios, ratio)
+            inverse_idx = find_nearest(inverse_ratios, ratio)
+
+            inverse = defaultdict(bool)
+            if areas[idx] > areas[inverse_idx]:
+                sel_idx = [idx]
+            else:
+                sel_idx = [inverse_idx]
+                inverse[inverse_idx] = True
+
+        lesions = []
+        for index in sel_idx:
+            lesion: np.ndarray = self.lesions[index]
+            if inverse[index]:
+                lesion = lesion.transpose()
+            lesions.append(lesion)
+
         with torch.no_grad():
-            candidate_lesions = self.vae.sample(x=loaded_lesion, samples=10, explore_dim=13).cpu()
+            candidate_lesions = []
+            for lesion in lesions:
+                loaded_lesion = torch.Tensor(lesion).unsqueeze(0).unsqueeze(0).cuda()
+                current_lesions = self.vae.sample(x=loaded_lesion, samples=10, explore_dim=13).cpu()
+                candidate_lesions.append(current_lesions)
+            candidate_lesions = torch.vstack(candidate_lesions)
             bbox, crop_lesion = self.find_lesion(candidate_lesions)
             heights = bbox[:,3]-bbox[:,1]
             widths = bbox[:,2]-bbox[:,0]
@@ -183,7 +196,7 @@ class Nodulegeneration(SegmentationAlgorithm):
             areas = [elem for elem in areas if elem < area_mean + 2 * area_std]
 
             area_idx = find_nearest(areas, area)
-            selected_lesion = candidate_lesions[area_idx]
+            #selected_lesion = candidate_lesions[area_idx]
             selected_lesion_crop = crop_lesion[area_idx]
             selected_bbox = bbox[area_idx]
             # plt.figure()
@@ -193,7 +206,7 @@ class Nodulegeneration(SegmentationAlgorithm):
             # plt.title("Original one")
             # plt.imshow(loaded_lesion[0].permute(1, 2, 0).cpu())
             # plt.show()
-            new_a_ratios = (bbox[:,3]-bbox[:,1])/(bbox[:,2]-bbox[:,0])
+            # new_a_ratios = (bbox[:,3]-bbox[:,1])/(bbox[:,2]-bbox[:,0])
 
         min_row = lesion_bbox[1]
         min_col = lesion_bbox[0]
@@ -202,7 +215,7 @@ class Nodulegeneration(SegmentationAlgorithm):
         max_row = min_row + rows
         max_col = min_col + cols
         upscaled_lesion = self.upscale_lesion(
-            selected_lesion_crop, selected_bbox
+            selected_lesion_crop, lesion_bbox
         )
         # input_0 = scaled_down_lesions[sample]
         input_1 = (
@@ -211,14 +224,15 @@ class Nodulegeneration(SegmentationAlgorithm):
         result = (1 / 255) * poisson_blend(
             upscaled_lesion, input_1, min_col, max_col, min_row, max_row
         )
-        #print(np.mean(selected_lesion_crop))
-        fig, ax = plt.subplots(1,2, figsize=(10,5), dpi=100)
-        ax = ax.flatten()
-        ax[0].imshow(starting_cxr, cmap='gray')
-
-        ax[1].imshow(result,cmap='gray')
-        ax[1].add_patch(matplotlib.patches.Rectangle((lesion_bbox[0], lesion_bbox[1]), lesion_bbox[2], lesion_bbox[3], facecolor="none", ec='k', lw=1))
-        plt.show()
+        # print(np.mean(upscaled_lesion))
+        # fig, ax = plt.subplots(1,2, figsize=(10,5), dpi=100)
+        # ax = ax.flatten()
+        # ax[0].imshow(starting_cxr, cmap='gray')
+        #
+        # ax[1].imshow(result,cmap='gray')
+        # ax[1].add_patch(matplotlib.patches.Rectangle((lesion_bbox[0], lesion_bbox[1]), lesion_bbox[2], lesion_bbox[3], facecolor="none", ec='k', lw=1))
+        # plt.show()
+        # print('test')
         # results[sample] = torch.Tensor(poisson_edit(addition[sample].permute(1, 2, 0).detach().cpu().numpy(),
         #                                starting_cxr[sample].permute(1, 2, 0).detach().cpu().numpy(),
         #                                mask_lesion[sample].permute(1, 2, 0).detach().cpu().numpy(), (0, 0))).permute(2,0,1)
@@ -237,9 +251,9 @@ class Nodulegeneration(SegmentationAlgorithm):
         if len(input_image.shape) == 2:
             input_image = np.expand_dims(input_image, 0)
 
-        pd_data = pd.read_csv(
-            "/opt/algorithm/ct_nodules.csv" if execute_in_docker else "ct_nodules.csv"
-        )
+        # pd_data = pd.read_csv(
+        #     "/opt/algorithm/ct_nodules.csv" if execute_in_docker else "ct_nodules.csv"
+        # )
 
         nodule_images = np.zeros(input_image.shape)
 
@@ -253,7 +267,7 @@ class Nodulegeneration(SegmentationAlgorithm):
                 boxes = nodule["corners"]
                 # no spacing info in GC with 3D version
                 # x_min, y_min, x_max, y_max = boxes[2][0]/spacing_x, boxes[2][1]/spacing_y, boxes[0][0]/spacing_x, boxes[0][1]/spacing_y
-                y_min, x_min, y_max, x_max = (
+                x_min, y_min, x_max, y_max = (
                     boxes[2][0],
                     boxes[2][1],
                     boxes[0][0],
@@ -305,9 +319,11 @@ class Nodulegeneration(SegmentationAlgorithm):
                 # result[x_min:x_max, y_min:y_max] = np.mean(
                 #     np.array([crop * 255, result[x_min:x_max, y_min:y_max]]), axis=0
                 # )
-                # cxr_img_scaled = result.copy()
-
-            nodule_images[j, :, :] = result
+                cxr_img_scaled = result.copy()
+            print('time per image', time.time() - t)
+            # plt.imshow(result, cmap='gray')
+            # plt.show()
+            nodule_images[j, :, :] = result*255
         print("total time took ", time.time() - total_time)
         return SimpleITK.GetImageFromArray(nodule_images)
 
