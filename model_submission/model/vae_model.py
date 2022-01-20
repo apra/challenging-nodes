@@ -1,7 +1,6 @@
 import math
 
 import numpy
-import torchvision.utils
 from dataclasses import dataclass
 from typing import List, Dict, Optional
 
@@ -554,22 +553,6 @@ class vaemodel(nn.Module):
         # x_recon = decoder_output
         # x_recon = torch.clamp(decoder_output, 0, 1)
         x_recon = decoder_output  # .sigmoid()
-        if out_dir is not None:
-            out = torch.zeros(x_recon.shape, dtype=torch.uint8)
-            for i, output in enumerate(x_recon):
-                output = (output - torch.min(output)) / (
-                    torch.max(output) - torch.min(output)
-                )
-                output *= 255
-                out[i] = output.to(torch.uint8)
-
-            filename = out_dir / Path("sample.png")
-            filename.parent.mkdir(parents=True, exist_ok=True)
-
-            img = Image.fromarray(
-                torchvision.utils.make_grid(out, nrow=4).permute(1, 2, 0).cpu().numpy()
-            )
-            img.save(filename)
         return x_recon
 
     def traversal(self, x=None, samples=1, out_dir: Path = None):
