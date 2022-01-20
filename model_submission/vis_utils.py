@@ -19,10 +19,7 @@ from __future__ import division
 from __future__ import print_function
 import math
 import numpy as np
-from PIL import Image
 import scipy
-from six.moves import range
-import imageio
 
 from scipy import stats
 
@@ -34,14 +31,15 @@ def save_image(image, image_path):
       image: Numpy array of shape (height, width, {1,3}) with values in [0, 1].
       image_path: String with path to output image.
     """
-    # Copy the single channel if we are provided a grayscale image.
-    if image.shape[2] == 1:
-        image = np.repeat(image, 3, axis=2)
-    image = np.ascontiguousarray(image)
-    image *= 255.0
-    image = image.astype("uint8")
-    img = Image.fromarray(image, mode="RGB")
-    img.save(image_path)
+    return None
+    # # Copy the single channel if we are provided a grayscale image.
+    # if image.shape[2] == 1:
+    #     image = np.repeat(image, 3, axis=2)
+    # image = np.ascontiguousarray(image)
+    # image *= 255.0
+    # image = image.astype("uint8")
+    # img = Image.fromarray(image, mode="RGB")
+    # img.save(image_path)
 
 
 def grid_save_images(images, image_path):
@@ -152,11 +150,11 @@ def pad_around(image, padding_px=10, axis=None, value=None):
 #   return padded_stack([image, footer], padding_px, axis=0, value=value)
 
 
-def save_animation(list_of_animated_images, image_path, fps):
-    full_size_images = []
-    for single_images in zip(*list_of_animated_images):
-        full_size_images.append(pad_around(padded_grid(list(single_images))))
-    imageio.mimwrite(image_path, full_size_images, fps=fps)
+# def save_animation(list_of_animated_images, image_path, fps):
+#     full_size_images = []
+#     for single_images in zip(*list_of_animated_images):
+#         full_size_images.append(pad_around(padded_grid(list(single_images))))
+#     imageio.mimwrite(image_path, full_size_images, fps=fps)
 
 
 def cycle_factor(starting_index, num_indices, num_frames):

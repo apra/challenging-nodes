@@ -15,8 +15,6 @@ from pathlib import Path
 import numpy as np
 
 import model_submission.vis_utils as visualize_util
-from PIL import Image
-from scipy import stats
 
 
 class Interpolate(nn.Module):
