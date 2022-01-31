@@ -17,14 +17,26 @@ class ArrangeModel(InpaintModel):
         _, self.netD_aux = self.initialize_networks(opt)
         if opt.continue_train:
             self.netD_aux = util.load_network(self.netD_aux, 'D_aux', opt.which_epoch, opt)
+        # if opt.load_base_g is not None:
+        #     print(f"looad {opt.load_base_g}")
+        #     self.netG.baseg = util.load_network_path(
+        #             self.netG.baseg, opt.load_base_g)
+        # if opt.load_base_d is not None:
+        #     print(f"looad {opt.load_base_d}")
+        #     self.netD = util.load_network_path(
+        #             self.netD, opt.load_base_d)
         if opt.load_base_g is not None:
             print(f"looad {opt.load_base_g}")
-            self.netG.baseg = util.load_network_path(
-                    self.netG.baseg, opt.load_base_g)
+            self.netG = util.load_network_path(
+                    self.netG, opt.load_base_g)
         if opt.load_base_d is not None:
             print(f"looad {opt.load_base_d}")
             self.netD = util.load_network_path(
                     self.netD, opt.load_base_d)
+            print("loading aux")
+            aux_path = str(opt.load_base_d)[:-4] + '_aux.pth'
+            self.netD_aux = util.load_network_path(
+                self.netD_aux, aux_path)
 
     def save(self, epoch):
         util.save_network(self.netG, 'G', epoch, self.opt)

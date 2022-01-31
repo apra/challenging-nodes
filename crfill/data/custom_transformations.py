@@ -1,5 +1,6 @@
 import numpy as np
 from data.bbox import crop_to_bbox
+from typing import List
 import cv2
 import matplotlib.pyplot as plt
 
@@ -117,3 +118,10 @@ def crop_around_mask_bbox(image: np.ndarray, mask_bbox, crop_size=256, rng=None,
         return cropped_image, new_mask, [crop_x, crop_y, crop_size, crop_size]
     else:
         return cropped_image
+
+
+def flip_image_and_bbox(image: np.ndarray, bbox: List):
+    width = image.shape[0]
+    flipped_image = np.flip(image, axis=1)
+    flipped_bbox = [width - (bbox[0]+bbox[2]), bbox[1], bbox[2], bbox[3]]
+    return flipped_image, flipped_bbox

@@ -95,6 +95,9 @@ class CustomTrainDataset(BaseDataset):
             image_path = self.paths_and_nodules[index][0]
             image_mask_bbox = self.paths_and_nodules[index][1]
             full_image = self.mha_loader(image_path)
+
+
+
             crop_size = self.opt.crop_around_mask_size
 
             # Crop around nodule
