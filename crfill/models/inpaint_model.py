@@ -2,7 +2,6 @@ import pdb
 import torch
 import models.networks as networks
 import util.util as util
-from models.create_mask import MaskCreator
 import random
 import numpy as np
 
@@ -117,26 +116,6 @@ class InpaintModel(torch.nn.Module):
     # |data|: dictionary of the input data
 
     def preprocess_input(self, data):
-        # b,c,h,w = data['image'].shape
-        # if self.opt.isTrain:
-        #     # generate random stroke mask
-        #     mask1 = self.mask_creator.stroke_mask(h, w, max_length=min(h,w)/2)
-        #     # generate object/square mask
-        #     ri = random.randint(0,3)
-        #     if ri  == 1 or ri == 0:
-        #         mask2 = self.mask_creator.object_mask(h, w)
-        #     else:
-        #         mask2 = self.mask_creator.rectangle_mask(h, w,
-        #                 min(h,w)//4, min(h,w)//2)
-        #     # use the mix of two masks
-        #     mask = (mask1+mask2>0)
-        #     mask = mask.astype(np.float)
-        #     mask = self.FloatTensor(mask)[None, None,...].expand(b,-1,-1,-1)
-        #     data['mask'] = mask
-        # else:
-        #     if self.use_gpu():
-        #         data['mask'] = data['mask'].cuda()
-        #     mask = data['mask']
         # move to GPU and change data types
         if self.use_gpu():
             data['real_image'] = data['real_image'].cuda()
@@ -154,20 +133,6 @@ class InpaintModel(torch.nn.Module):
 
             G_losses['GAN'] = self.criterionGAN(pred_fake, True,
                                                 for_discriminator=False)
-
-        # if not self.opt.no_ganFeat_loss:
-        #     raise NotImplementedError
-        #     # this below was unreachable code....???
-        #     # num_D = len(pred_fake)
-        #     # GAN_Feat_loss = self.FloatTensor(1).fill_(0)
-        #     # for i in range(num_D):  # for each discriminator
-        #     #     # last output is the final prediction, so we exclude it
-        #     #     num_intermediate_outputs = len(pred_fake[i]) - 1
-        #     #     for j in range(num_intermediate_outputs):  # for each layer output
-        #     #         unweighted_loss = self.criterionFeat(
-        #     #             pred_fake[i][j], pred_real[i][j].detach())
-        #     #         GAN_Feat_loss += unweighted_loss * self.opt.lambda_feat / num_D
-        #     # G_losses['GAN_Feat'] = GAN_Feat_loss
 
         if self.opt.vgg_loss and not self.opt.no_fine_loss:
             G_losses['VGG'] = self.criterionVGG(fake_image, real_image) \

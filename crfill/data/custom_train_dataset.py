@@ -1,16 +1,8 @@
-import torchvision.transforms
-
-from data.base_dataset import get_params, get_transform, BaseDataset, basic_transform
-from PIL import Image
-import os
-import pdb
-import torch
-import numpy as np
-import csv
 import SimpleITK as sitk
-from torchvision.transforms import Compose, ToTensor
-from data.custom_transformations import mask_image, crop_around_mask_bbox, normalize_cxr, mask_convention_setter
-from util.metadata_utils import get_paths_and_nodules
+import numpy as np
+import torch
+from data.base_dataset import BaseDataset, basic_transform
+from data.custom_transformations import mask_image, crop_around_mask_bbox, normalize_cxr
 
 
 class CustomTrainDataset(BaseDataset):

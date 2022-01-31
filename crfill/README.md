@@ -1,105 +1,38 @@
 # crfill
 
-[Usage](#basic-usage) | [Web App](#web-app) | | [Paper](https://arxiv.org/pdf/2011.12836.pdf) | [Supplementary Material](https://maildluteducn-my.sharepoint.com/:b:/g/personal/zengyu_mail_dlut_edu_cn/Eda8Q_v7OSNMj0nr2iG7TmABvxLOtAPwVDdk5mjl7c-IFw?e=Cvki0I) | [More results](viscmp.md) |
+[Paper](https://arxiv.org/pdf/2011.12836.pdf) | 
+```shell
+#!/bin/bash
+#SBATCH -t 2-00:00:00
+#SBATCH --mem=75G
+#SBATCH --gres=gpu:2
+#SBATCH --cpus-per-task=32
+#SBATCH --output=train_with_flip_%A.out
+#SBATCH --error=train_with_flip_%A.err
 
-code for paper ``CR-Fill: Generative Image Inpainting with Auxiliary Contextual Reconstruction". This repo (including code and models) are for research purposes only. 
+NUM_WORKERS=5
+SINGULARITYIMAGE="$HOME/projects/singularity_files/crfill.sif"
+LOGGING_DIR="/proj/checkpoints"
+JOBS_SOURCE="$HOME/projects/crfill"
 
-<img src="https://s3.ax1x.com/2020/11/27/DrVxIO.png" width="160"> <img src="https://s3.ax1x.com/2020/11/27/DrZ9RH.png" width="160"> 
-<img src="https://s3.ax1x.com/2020/11/27/DrZlyn.png" width="160"> <img src="https://s3.ax1x.com/2020/11/27/DrZGwV.png" width="160"> 
+NAME=continue_train_ssim_551
 
-<img src="https://s3.ax1x.com/2020/11/27/DrZtFU.png" width="360"> <img src="https://s3.ax1x.com/2020/11/27/DrZdSJ.png" width="360"> 
+DATA_LOC="/processing/e.marcus/node21_data"
+DISCRIMINATOR_LOC="$SCRATCH/chalnode_checkpoints/continued_training_ssim551/latest_net_D.pth"
+GENERATOR_LOC="$SCRATCH/chalnode_checkpoints/continued_training_ssim551/latest_net_G.pth"
 
-## Usage
+STANDARD_PARAMS="--seed 0  --batchSize 80 --ssim_loss --lr 0.00009 --niter_decay 300 --load_base_g $GENERATOR_LOC --load_base_d $DISCRIMINATOR_LOC --include_chexpert --include_mimic --node21_resample_count 10 --dataset_mode_train custom_train --dataset_mode custom_train --train_image_dir $DATA_LOC --netG twostagend --netD deepfill --preprocess_mode none --validation_freq 20000 --niter 2 --display_freq 2000 --model arrange"
+#STANDARD_PARAMS="--seed 0  --batchSize 40  --dataset_mode_train custom_train_negative --dataset_mode custom_train_negative --train_image_dir /data --netG twostagend --netD deepfill --preprocess_mode none --validation_freq 20000 --niter 600 --display_freq 2000 --model arrange"
 
-### Dependencies
-0. Download code
+COMMAND="python -u train.py --name $NAME --num_workers $NUM_WORKERS --checkpoints_dir $LOGGING_DIR/$NAME --gpu_ids 0,1 --beta_l1 5. --lambda_ref 5. --lambda_ssim 1. $STANDARD_PARAMS"
+
+echo "Running $NAME"
+singularity exec --no-home --nv \
+--bind "$JOBS_SOURCE":/proj \
+--bind /processing/:/processing \
+--pwd /proj \
+$SINGULARITYIMAGE \
+$COMMAND
+
+echo "$NAME command ran"
 ```
-git clone --single-branch https://github.com/zengxianyu/crfill
-git submodule init
-git submodule update
-```
-
-0. Download data and model
-```
-chmod +x download/*
-./download/download_model.sh
-./download/download_datal.sh
-```
-
-1. Install dependencies:
-```
-conda env create -f environment.yml
-```
-or install these packages manually in a Python 3.6 enviroment: 
-
-```pytorch=1.3.1, opencv=3.4.2, tqdm, torchvision, dill, matplotlib, opencv```
-
-
-### Inference
-
-```
-./test.sh
-```
-
-These script will run the inpainting model on the samples I provided. Modify the options ```--image_dir, --mask_dir, --output_dir``` in ```test.sh``` to test on custom data. 
-
-### Train
-1. Prepare training datasets and put them in ```./datasets/``` following the example ```./datasets/places```
-
-2. run the training script:
-```
-python train.py --dataset_mode_train trainimage --name debug --dataset_mode_val valimage --train_image_dir ./datasets/places/places2 --train_image_list ./datasets/places/train_example.txt --path_objectshape_list ./datasets/object_shapes.txt --path_objectshape_base ./datasets/object_masks --val_image_dir ./datasets/places2sample1k_val/places2samples1k_crop256 --val_image_list ./datasets/places2sample1k_val/files.txt --val_mask_dir ./datasets/places2sample1k_val/places2samples1k_256_mask_square128 --no_vgg_loss --no_ganFeat_loss --load_size 640 --crop_size 256 --model inpaint --netG baseconv --netD deepfill --preprocess_mode scale_shortside_and_crop --validation_freq 10000 --gpu_ids 0 --niter 50
-```
-
-open the html files in ```./output``` to visualize training
-
-After the training is finished, the model files can be found in ```./checkpoints/debugarr0```
-
-you may modify the training script to use different settings, e.g., batch size, hyperparameters
-
-### Finetune
-For finetune on custom dataset based on my pretrained models, use the following command:
-1. download checkpoints
-```
-./download/download_pretrain.sh
-```
-2. run the training script
-```
-./finetune.sh
-```
-you may change the options in ```finetune.sh``` to use different hyperparameters or your own dataset
-
-
-### Web APP
-<img src="https://s3.ax1x.com/2020/11/27/DrVLs1.png" width=300>
-
-To use the web app, these additional packages are required: 
-
-```flask```, ```requests```, ```pillow```
-
-
-```
-./demo.sh
-```
-
-then open http://localhost:2334 in the browser to use the web app
-
-```
-singularity shell --nv --bind $SCRATCH container.sif
-```
-
-## Citing
-```
-@inproceedings{zeng2021generative,
-  title={CR-Fill: Generative Image Inpainting with Auxiliary Contextual Reconstruction},
-  author={Zeng, Yu and Lin, Zhe and Lu, Huchuan and Patel, Vishal M.},
-  booktitle={Proceedings of the IEEE International Conference on Computer Vision},
-  year={2021}
-}
-```
-
-## Acknowledgement
-
-* DeepFill https://github.com/jiahuiyu/generative_inpainting
-* Pix2PixHD https://github.com/NVIDIA/pix2pixHD
-* SPADE https://github.com/NVlabs/SPADE

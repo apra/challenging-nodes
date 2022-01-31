@@ -1,36 +1,26 @@
-import pdb
 import sys
-import torch
-import numpy as np
-from collections import OrderedDict
-from options.train_options import TrainOptions
-import data
-from util.iter_counter import IterationCounter
-from logger import Logger
-from torchvision.utils import make_grid
-from trainers import create_trainer
-from torch.utils import tensorboard
-#from torch.utils.tensorboard import SummaryWriter
-from util.util import set_all_seeds
-from trainers.pix2pix_trainer import Pix2PixTrainer
 
-from torchvision import datasets, transforms
-from util.plot_util import draw_bounding_boxes
+import torch
+from torch.utils import tensorboard
+from torchvision.utils import make_grid
+
+import data
+from logger import Logger
+from options.train_options import TrainOptions
+from trainers.pix2pix_trainer import Pix2PixTrainer
+from util.iter_counter import IterationCounter
+# from torch.utils.tensorboard import SummaryWriter
+from util.util import set_all_seeds
+
 # parse options
-# temporary fix for LISA
-#torch.set_num_threads(24)
 opt = TrainOptions().parse()
 
 set_all_seeds(opt.seed)
-
-# print options to help debugging
-print(' '.join(sys.argv))
 
 # load the dataset
 dataloader_train, dataloader_val = data.create_dataloader_trainval(opt)
 
 # create trainer for our model
-# trainer = create_trainer(opt)
 trainer = Pix2PixTrainer(opt)
 model = trainer.model
 
@@ -43,8 +33,6 @@ writer = Logger(f"output/{opt.name}")
 ts_writer = tensorboard.SummaryWriter(f'{opt.checkpoints_dir}/tensorboard')
 
 trainer.save('latest')
-
-#torch.multiprocessing.set_sharing_strategy('file_system')
 
 for epoch in iter_counter.training_epochs():
     iter_counter.record_epoch_start(epoch)
@@ -65,27 +53,11 @@ for epoch in iter_counter.training_epochs():
             for k, v in losses.items():
                 ts_writer.add_scalar(f"train/{k}", v.mean().item(), iter_counter.total_steps_so_far)
             writer.write_console(epoch, iter_counter.epoch_iter, iter_counter.time_per_iter)
-            if opt.model == 'arrangeskipconn':
-                input_name = 'neg_cropped_normalized_cxr'
-            else:
-                input_name = 'real_image'
+            input_name = 'real_image'
             num_print = min(4, data_i[input_name].size(0))
-            # writer.add_single_image('inputs',
-            #         (make_grid(data_i['full_image'][:num_print])+1)/2,
-            #         iter_counter.total_steps_so_far)
-            # ts_writer.add_image('inputs',
-            #                 draw_bounding_boxes(data_i['full_image'],data_i['bounding_box']),
-            #                 iter_counter.total_steps_so_far)
             ts_writer.add_image('train/original_cropped',
                                make_grid((data_i[input_name][:num_print]+1)/2),
                                iter_counter.total_steps_so_far)
-            if opt.model == 'arrangeskipconn':
-                ts_writer.add_image('train/positive_input',
-                                    make_grid((data_i['pos_cropped_normalized_cxr'][:num_print] + 1) / 2),
-                                    iter_counter.total_steps_so_far)
-                ts_writer.add_image('train/desired_mask',
-                                    make_grid((data_i['neg_cropped_mask'][:num_print] + 1) / 2),
-                                    iter_counter.total_steps_so_far)
 
             infer_out,inp = trainer.model.forward(data_i, mode='inference')
             vis = (make_grid(inp[:num_print])+1)/2
@@ -123,27 +95,6 @@ for epoch in iter_counter.training_epochs():
             trainer.save('latest')
             iter_counter.record_current_iter()
 
-            # TODO: disabled validation
-            # print("doing validation")
-            # model.eval()
-            # num = 0
-            # psnr_total = 0
-            # for ii, data_ii in enumerate(dataloader_val):
-            #     with torch.no_grad():
-            #         generated,_ = model(data_ii, mode='inference')
-            #         generated = generated.cpu()
-            #     generated = (generated+1)/2*255
-            #     gt = data_ii[input_name]
-            #     bsize, c, h, w = gt.shape
-            #     gt = (gt+1)/2*255
-            #     mse = ((generated-gt)**2).sum(3).sum(2).sum(1)
-            #     mse /= (c*h*w)
-            #     psnr = 10*torch.log10(255.0*255.0 / (mse+1e-8))
-            #     psnr_total += psnr.sum().item()
-            #     num += bsize
-            # psnr_total /= num
-            # ts_writer.add_scalar("val/psnr", psnr_total, iter_counter.total_steps_so_far)
-            # model.train()
     trainer.update_learning_rate(epoch)
     iter_counter.record_epoch_end()
     trainer.save('latest')
